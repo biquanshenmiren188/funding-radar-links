@@ -82,13 +82,14 @@
     if (button.previousElementSibling !== anchor) anchor.insertAdjacentElement("afterend", button);
     const result = results.get(details.symbol.toUpperCase());
     button.disabled = result?.state === "loading";
+    if (result?.state === "unknown") button.title = `${details.symbol} 暂无有效查询结果，点击重试`;
     card.querySelectorAll(".funding-radar-limit-status").forEach(el => {
       if (!details.hlTags.includes(el.previousElementSibling)) el.remove();
     });
     for (const tag of details.hlTags) {
       let badge = tag.nextElementSibling;
       if (!badge?.classList.contains("funding-radar-limit-status")) badge = null;
-      if (!result) { badge?.remove(); continue; }
+      if (!result || result.state === "unknown") { badge?.remove(); continue; }
       if (!badge) {
         badge = document.createElement("span");
         badge.className = "funding-radar-limit-status";
@@ -98,7 +99,7 @@
       }
       const stale = result.checkedAt && Date.now() - result.checkedAt >= limits.FRESH_MS;
       const state = stale ? "stale" : result.state;
-      const label = { open: "可", restricted: "限", unknown: "未知", loading: "查询中", stale: "待查" }[state];
+      const label = { open: "可", restricted: "限", loading: "查询中", stale: "待查" }[state];
       if (badge.textContent !== label) badge.textContent = label;
       badge.dataset.state = state;
       const time = result.checkedAt ? new Date(result.checkedAt).toLocaleTimeString("zh-CN", { hour12: false }) : "";
