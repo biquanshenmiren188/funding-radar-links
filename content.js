@@ -15,6 +15,7 @@
     const oldLink = card.querySelector(".funding-radar-link");
     if (!details) {
       oldLink?.remove();
+      card.querySelector(".funding-radar-header")?.classList.remove("funding-radar-header");
       return;
     }
 
@@ -22,14 +23,18 @@
     const link = oldLink || document.createElement("a");
     if (!oldLink) {
       link.className = "funding-radar-link";
-      link.textContent = "雷达 ↗";
+      link.textContent = "雷达↗";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.title = `在资金费雷达查看 ${details.symbol}（${details.mode}）`;
     }
+    link.title = `在资金费雷达查看 ${details.symbol}（${details.mode} · ${details.exchanges.join(" / ")}）`;
     if (link.href !== href) link.href = href;
     if (link.previousElementSibling !== details.nameElement || link.parentElement !== details.nameElement.parentElement) {
       details.nameElement.insertAdjacentElement("afterend", link);
+    }
+    if (!details.nameElement.title) details.nameElement.title = details.nameElement.textContent.trim();
+    if (!details.nameElement.parentElement.classList.contains("funding-radar-header")) {
+      details.nameElement.parentElement.classList.add("funding-radar-header");
     }
   }
 
@@ -47,7 +52,12 @@
   }
 
   function queueFrom(node) {
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    if (!node) return;
     if (node.nodeType !== Node.ELEMENT_NODE) return;
+    // Price/position text changes do not change the destination. Observe only card identity changes.
+    const row = node.closest("p");
+    if (row && !/^交易所\s*[:：]/.test(row.textContent.trim())) return;
     if (node.matches(".ant-card")) queue(node);
     else {
       const card = node.closest(".ant-card");
@@ -62,6 +72,7 @@
     if (frame !== undefined) cancelAnimationFrame(frame);
     pending.clear();
     document.querySelectorAll(".funding-radar-link").forEach(link => link.remove());
+    document.querySelectorAll(".funding-radar-header").forEach(header => header.classList.remove("funding-radar-header"));
     globalThis.__fundingRadarLinksStarted = false;
   }
 
@@ -78,7 +89,7 @@
         for (const node of record.addedNodes) queueFrom(node);
       }
     });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["class"] });
     storageListener = (changes, area) => {
       if (area !== "local") return;
       if (changes.siteOrigin && changes.siteOrigin.newValue !== location.origin) {
