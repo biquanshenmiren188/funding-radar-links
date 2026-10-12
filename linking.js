@@ -2,6 +2,18 @@
   "use strict";
 
   const DEFAULT_RADAR_ORIGIN = "https://47.79.37.237";
+  const radarExchanges = new Set(["binance", "bybit", "gate", "okx", "bitget", "aster", "hyperliquid"]);
+  const gcExchanges = new Set(["binance", "bybit", "gate", "okx", "hl"]);
+
+  function normalizeExchange(value) {
+    let exchange = String(value || "").trim().toLowerCase();
+    if (exchange.startsWith("gc-")) {
+      exchange = exchange.slice(3);
+      if (!gcExchanges.has(exchange)) return null;
+    }
+    if (exchange === "hl") exchange = "hyperliquid";
+    return radarExchanges.has(exchange) ? exchange : null;
+  }
 
   function normalizeSymbol(value) {
     return String(value || "")
@@ -23,14 +35,15 @@
 
     const exchangeRow = Array.from(card.querySelectorAll("p"))
       .find(row => /^交易所\s*[:：]/.test(row.textContent.trim()));
-    const tags = exchangeRow?.querySelectorAll(".ant-tag");
-    if (!tags || tags.length !== 2) return null;
+    const tags = Array.from(exchangeRow?.querySelectorAll(".ant-tag") || [])
+      .filter(tag => legType(tag.classList));
+    if (tags.length !== 2) return null;
 
     const mode = legType(tags[0].classList) + legType(tags[1].classList);
     if (!(["FF", "FS", "SF"].includes(mode))) return null;
 
-    const exchanges = Array.from(tags, tag => tag.textContent.trim().toLowerCase());
-    if (exchanges.some(value => !/^[a-z0-9-]+$/.test(value))) return null;
+    const exchanges = Array.from(tags, tag => normalizeExchange(tag.textContent));
+    if (exchanges.some(value => value === null)) return null;
     return { nameElement, symbol, mode, exchanges };
   }
 
@@ -38,6 +51,8 @@
     if (!(["FF", "FS", "SF"].includes(mode)) || !symbol || exchanges?.length !== 2) {
       throw new Error("Invalid card details");
     }
+    const venues = exchanges.map(normalizeExchange);
+    if (venues.some(value => value === null)) throw new Error("Unsupported Radar exchange");
     const base = new URL(radarOrigin);
     if (!["http:", "https:"].includes(base.protocol) || !base.hostname) {
       throw new Error("Invalid Radar site address");
@@ -46,10 +61,10 @@
     url.searchParams.set("tab", mode);
     url.searchParams.set("mode", mode);
     url.searchParams.set("q", symbol);
-    url.searchParams.set("combo", `${mode}.${symbol}.${exchanges[0]}.${exchanges[1]}`);
+    url.searchParams.set("combo", `${mode}.${symbol}.${venues[0]}.${venues[1]}`);
     return url.href;
   }
 
-  root.FundingRadarLinking = { normalizeSymbol, readCard, makeRadarUrl, DEFAULT_RADAR_ORIGIN };
+  root.FundingRadarLinking = { normalizeSymbol, normalizeExchange, readCard, makeRadarUrl, DEFAULT_RADAR_ORIGIN };
   if (typeof module !== "undefined") module.exports = root.FundingRadarLinking;
 })(globalThis);

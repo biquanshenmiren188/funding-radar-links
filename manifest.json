@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Funding Radar Links",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "在套利卡片的标的旁打开对应的资金费雷达。",
   "action": {
     "default_title": "Funding Radar Links",

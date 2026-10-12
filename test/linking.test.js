@@ -50,3 +50,36 @@ test("removes a decorative emoji and safely encodes symbols", () => {
 test("skips cards with unknown market types", () => {
   assert.equal(readCard(card("Q", ["blue", "gold"])), null);
 });
+
+test("ignores non-exchange badges after the two market tags", () => {
+  const details = readCard(card("🟩SAGA", ["gold", "green", "blue"], ["gate", "binance", "全"]));
+  assert.equal(details.symbol, "SAGA");
+  assert.equal(details.mode, "FS");
+  assert.deepEqual(details.exchanges, ["gate", "binance"]);
+});
+
+test("maps every supported GC venue and HL alias without reversing legs", () => {
+  const aliases = {"gc-binance":"binance", "gc-bybit":"bybit", "gc-gate":"gate", "gc-okx":"okx", "gc-hl":"hyperliquid", hl:"hyperliquid"};
+  for (const [left, expectedLeft] of Object.entries(aliases)) for (const [right, expectedRight] of Object.entries(aliases)) {
+    for (const [colors, mode] of [[["gold","gold"],"FF"], [["green","gold"],"SF"], [["gold","green"],"FS"]]) {
+      const details = readCard(card("MUBARAK", colors, [left,right]));
+      assert.deepEqual(details.exchanges, [expectedLeft,expectedRight]);
+      const url = new URL(makeRadarUrl(details, "https://radar.example.com"));
+      assert.equal(url.searchParams.get("combo"), `${mode}.MUBARAK.${expectedLeft}.${expectedRight}`);
+      assert.equal(url.searchParams.get("mode"), mode);
+    }
+  }
+});
+
+test("rejects unverified venues instead of generating a silently wrong radar link", () => {
+  for (const venue of ["gc-aster", "gc-unknown", "unknown", "gc-gc-gate", "gc-hyperliquid"]) {
+    assert.equal(readCard(card("Q", ["gold","gold"], [venue,"gate"])), null);
+    assert.throws(() => makeRadarUrl({symbol:"Q",mode:"FF",exchanges:[venue,"gate"]}), /Unsupported/);
+  }
+});
+
+test("normalizes direct caller aliases, casing and whitespace and preserves native identity", () => {
+  const url = new URL(makeRadarUrl({symbol:"1000RATS",mode:"FF",exchanges:[" GC-BINANCE "," HL "]},"https://radar.example.com"));
+  assert.equal(url.searchParams.get("combo"), "FF.1000RATS.binance.hyperliquid");
+  assert.equal(url.searchParams.get("q"), "1000RATS");
+});

@@ -30,3 +30,12 @@ Chrome Manifest V3 扩展：在套利看板每张卡片的标的右侧添加“�
 - 文件入口：`manifest.json` 定义权限与弹窗；`background.js` 注册站点脚本；`popup.js` 保存两个站点地址；`content.js` 处理卡片与动态更新；`linking.js` 解析卡片并构造 URL。
 - 本项目没有依赖或构建步骤。修改 JavaScript 后运行 `node --test test/*.test.js`，再到 Chrome 扩展页重新加载并刷新看板实测。
 - 发布新版本时先修改 `manifest.json` 的 `version`，提交并推送仓库。用户仍需在自己的 Chrome 中重新加载扩展；GitHub 更新不会自动替换已加载的本地文件。
+
+## 1.2.0：GC / Hyperliquid 链接与动态更新
+
+- GC 是路由平台前缀，雷达仍使用底层交易所：gc-binance → binance、gc-bybit → bybit、gc-gate → gate、gc-okx → okx、gc-hl → hyperliquid；普通 hl 同样转为 hyperliquid。
+- 保留卡片左右腿顺序、现货/合约类型和原始币种名称。未核实的平台不生成链接，不自动选择其他交易所。
+- 支持仅更新标题或标签文字时重新计算链接；忽略仓位、价格等段落的高频文字更新，避免每帧重复修改已存在的标题布局 class。
+- 保留当前紧凑按钮布局。已有配置、域名、权限范围不变，不新增后台行情请求。
+
+更新：下载发布页的 Funding-Radar-Links-1.2.0.zip，解压后替换原扩展目录里的同名文件；在 Chrome 扩展管理页点击本插件的重新加载，再刷新套利看板。保留相同目录可沿用原站点配置。GitHub 发布不会自动替换本地插件。
