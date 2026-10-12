@@ -36,3 +36,14 @@
   opacity: .9;
 }
 .funding-radar-link:hover { opacity: 1; text-decoration: underline !important; }
+.funding-radar-limit-button { background: transparent; cursor: pointer; font-family: inherit; }
+.funding-radar-limit-button:disabled { opacity: .55; cursor: wait; }
+.funding-radar-limit-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
+.funding-radar-limit-status {
+  display: inline-block; vertical-align: middle; white-space: nowrap;
+  margin: 0 6px 0 0; padding: 0 3px; border-radius: 3px;
+  font: 600 12px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #525c68; background: #f0f2f5;
+}
+.funding-radar-limit-status[data-state="open"] { color: #096c38; background: #e7f6eb; }
+.funding-radar-limit-status[data-state="restricted"] { color: #ad2424; background: #fff0ef; }

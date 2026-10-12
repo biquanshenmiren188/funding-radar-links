@@ -28,7 +28,7 @@
     return null;
   }
 
-  function readCard(card) {
+  function cardElements(card) {
     const nameElement = card.querySelector(".ant-card-head .pair-name-link");
     const symbol = normalizeSymbol(nameElement?.textContent);
     if (!symbol) return null;
@@ -38,6 +38,13 @@
     const tags = Array.from(exchangeRow?.querySelectorAll(".ant-tag") || [])
       .filter(tag => legType(tag.classList));
     if (tags.length !== 2) return null;
+    return { nameElement, symbol, tags };
+  }
+
+  function readCard(card) {
+    const elements = cardElements(card);
+    if (!elements) return null;
+    const { nameElement, symbol, tags } = elements;
 
     const mode = legType(tags[0].classList) + legType(tags[1].classList);
     if (!(["FF", "FS", "SF"].includes(mode))) return null;
@@ -45,6 +52,14 @@
     const exchanges = Array.from(tags, tag => normalizeExchange(tag.textContent));
     if (exchanges.some(value => value === null)) return null;
     return { nameElement, symbol, mode, exchanges };
+  }
+
+  function readLimitCard(card) {
+    const elements = cardElements(card);
+    if (!elements || elements.symbol.length > 60) return null;
+    const hlTags = elements.tags.filter(tag =>
+      legType(tag.classList) === "F" && normalizeExchange(tag.textContent) === "hyperliquid");
+    return hlTags.length ? { nameElement: elements.nameElement, symbol: elements.symbol, hlTags } : null;
   }
 
   function makeRadarUrl({ symbol, mode, exchanges }, radarOrigin = DEFAULT_RADAR_ORIGIN) {
@@ -65,6 +80,6 @@
     return url.href;
   }
 
-  root.FundingRadarLinking = { normalizeSymbol, normalizeExchange, readCard, makeRadarUrl, DEFAULT_RADAR_ORIGIN };
+  root.FundingRadarLinking = { normalizeSymbol, normalizeExchange, readCard, makeRadarUrl, readLimitCard, DEFAULT_RADAR_ORIGIN };
   if (typeof module !== "undefined") module.exports = root.FundingRadarLinking;
 })(globalThis);

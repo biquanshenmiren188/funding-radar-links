@@ -83,3 +83,29 @@ test("normalizes direct caller aliases, casing and whitespace and preserves nati
   assert.equal(url.searchParams.get("combo"), "FF.1000RATS.binance.hyperliquid");
   assert.equal(url.searchParams.get("q"), "1000RATS");
 });
+
+const {readLimitCard}=require('../linking.js');
+test('limit lookup is available for either HL perpetual leg including GC, once per card',()=>{
+ for(const venue of ['hl','gc-hl','hyperliquid'])for(const side of [0,1]) {
+   const venues=['binance','gate'];venues[side]=venue;
+   const details=readLimitCard(card('W',['gold','gold'],venues));
+   assert.equal(details.symbol,'W');
+   assert.equal(details.hlTags.length,1);
+ }
+ assert.equal(readLimitCard(card('BTC',['gold','gold'],['hl','gc-hl'])).symbol,'BTC');
+});
+test('spot HL and unrelated cards have no public perpetual limit shortcut',()=>{
+ assert.equal(readLimitCard(card('W',['gold','green'],['gate','hl'])),null);
+ assert.equal(readLimitCard(card('W',['green','gold'],['gc-hl','binance'])),null);
+ assert.equal(readLimitCard(card('W',['gold','gold'],['binance','gate'])),null);
+ assert.equal(readLimitCard(card('',['gold','gold'],['hl','gate'])),null);
+});
+test('HL lookup does not depend on the other exchange being supported by radar',()=>{
+ assert.equal(readLimitCard(card('W',['gold','gold'],['unknown','hl'])).symbol,'W');
+});
+test('HL query keeps exact coin names and rejects overlong identity',()=>{
+ for(const symbol of ['1000RATS','xyz:BTC','BTC/USDC','龙虾','X&coin=W']) {
+  assert.equal(readLimitCard(card(symbol,['gold','gold'],['gc-hl','gate'])).symbol,symbol);
+ }
+ assert.equal(readLimitCard(card('X'.repeat(61),['gold','gold'],['hl','gate'])),null);
+});

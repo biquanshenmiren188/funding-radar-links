@@ -17,10 +17,21 @@
       <label for="radar-url">Radar 站点地址</label>
       <input id="radar-url" type="url" placeholder="https://47.79.37.237" autocomplete="url" required>
       <small>默认使用当前 IP 地址；扩展会在该地址下打开 /radar/。</small>
+      <fieldset>
+        <legend>Hyperliquid 限额查询</legend>
+        <label class="toggle"><input id="hl-auto" type="checkbox"> 开启自动查询</label>
+        <label for="hl-interval">查询间隔</label>
+        <select id="hl-interval"><option value="30">30 秒</option><option value="60" selected>1 分钟</option><option value="120">2 分钟</option><option value="300">5 分钟</option></select>
+        <label for="hl-coins">自动查询币种</label>
+        <textarea id="hl-coins" rows="2" maxlength="6000" placeholder="W, BTC, ETH"></textarea>
+        <small>英文逗号或换行分隔，最多 100 个。只查当前卡片中的 HL 永续币种；后台标签页暂停。手动「查」始终可用。</small>
+        <small>「可开」表示未触及 HL 公共持仓上限。结果 30 秒后显示「待查」。</small>
+      </fieldset>
       <button type="submit">保存并启用</button>
     </form>
     <output id="status" role="status" aria-live="polite"></output>
   </main>
+  <script src="limits.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

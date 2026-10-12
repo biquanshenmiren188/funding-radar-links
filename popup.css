@@ -13,3 +13,9 @@ button:hover { background: #1155aa; }
 button:disabled { opacity: .55; cursor: wait; }
 output { display: block; min-height: 18px; margin-top: 11px; color: #126137; }
 output.error { color: #b42318; }
+fieldset { margin: 18px 0 0; padding: 12px; border: 1px solid #d9e1e9; border-radius: 7px; }
+legend { font-weight: 650; }
+.toggle { display: flex; align-items: center; gap: 8px; }
+.toggle input { width: 16px; height: 16px; }
+select, textarea { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid #cbd4df; border-radius: 6px; font: inherit; }
+textarea { resize: vertical; }
