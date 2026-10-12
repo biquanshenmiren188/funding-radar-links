@@ -10,6 +10,7 @@
   const released = limits.createReleaseTracker();
   const notifier = globalThis.FundingRadarAlerts.createNotifier();
   let releaseAlert = true;
+  let releaseCoins = [];
   const expiries = new Map();
   let autoSettings = limits.settings();
   let autoTimer;
@@ -34,7 +35,7 @@
     // A response arriving after the tab hides must not consume a release notification.
     if (!document.hidden || result.state !== "open") {
       const shouldAlert = released(key, result);
-      if (shouldAlert && releaseAlert) {
+      if (shouldAlert && releaseAlert && releaseCoins.includes(key)) {
         const cards = [...document.querySelectorAll(".ant-card")].filter(card =>
           linking.readLimitCard(card)?.symbol.toUpperCase() === key);
         notifier.notify(symbol, cards);
@@ -45,12 +46,12 @@
   }
   function scheduleAuto(immediate = false) {
     clearTimeout(autoTimer);
-    if (stopped || !autoSettings.enabled || !autoSettings.coins.length || document.hidden) return;
+    if (stopped || !autoSettings.enabled || (autoSettings.mode !== "all" && !autoSettings.coins.length) || document.hidden) return;
     autoTimer = setTimeout(() => {
       const symbols = new Set();
       document.querySelectorAll(".ant-card").forEach(card => {
         const details = linking.readLimitCard(card);
-        if (details && autoSettings.coins.includes(details.symbol.toUpperCase())) symbols.add(details.symbol);
+        if (details && (autoSettings.mode === "all" || autoSettings.coins.includes(details.symbol.toUpperCase()))) symbols.add(details.symbol);
       });
       for (const symbol of symbols) querySymbol(symbol);
       scheduleAuto();
@@ -97,7 +98,7 @@
       }
       const stale = result.checkedAt && Date.now() - result.checkedAt >= limits.FRESH_MS;
       const state = stale ? "stale" : result.state;
-      const label = { open: "可开", restricted: "限制", unknown: "未知", loading: "查询中", stale: "待查" }[state];
+      const label = { open: "可", restricted: "限", unknown: "未知", loading: "查询中", stale: "待查" }[state];
       if (badge.textContent !== label) badge.textContent = label;
       badge.dataset.state = state;
       const time = result.checkedAt ? new Date(result.checkedAt).toLocaleTimeString("zh-CN", { hour12: false }) : "";
@@ -191,12 +192,13 @@
     globalThis.__fundingRadarLinksStarted = false;
   }
 
-  chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert"]).then(({ siteOrigin, radarOrigin: savedRadarOrigin, hlAutoQuery, hlReleaseAlert }) => {
+  chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert", "hlReleaseCoins"]).then(({ siteOrigin, radarOrigin: savedRadarOrigin, hlAutoQuery, hlReleaseAlert, hlReleaseCoins }) => {
     if (location.origin !== siteOrigin) {
       stop();
       return;
     }
     releaseAlert = hlReleaseAlert !== false;
+    releaseCoins = limits.parseCoins(hlReleaseCoins);
     autoSettings = limits.settings(hlAutoQuery);
     document.addEventListener("visibilitychange", visibilityChanged);
     scheduleAuto(true);
@@ -215,6 +217,7 @@
         stop();
         return;
       }
+      if (changes.hlReleaseCoins) { releaseCoins = limits.parseCoins(changes.hlReleaseCoins.newValue); notifier.clear(); }
       if (changes.hlReleaseAlert) { releaseAlert = changes.hlReleaseAlert.newValue !== false; if (!releaseAlert) notifier.clear(); }
       if (changes.hlAutoQuery) { autoSettings = limits.settings(changes.hlAutoQuery.newValue); scheduleAuto(true); }
       if (changes.radarOrigin) {

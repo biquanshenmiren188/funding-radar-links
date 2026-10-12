@@ -20,14 +20,24 @@
       <fieldset>
         <legend>Hyperliquid 限额查询</legend>
         <label class="toggle"><input id="hl-auto" type="checkbox"> 开启自动查询</label>
-        <label class="toggle"><input id="hl-release-alert" type="checkbox" checked> 限制解除提醒（声音 + 抖动）</label>
-        <small>从「限制」恢复「可开」时提醒一次，复用页面报警音；首次查询可开不报警。</small>
         <label for="hl-interval">查询间隔</label>
         <select id="hl-interval"><option value="30">30 秒</option><option value="60" selected>1 分钟</option><option value="120">2 分钟</option><option value="300">5 分钟</option></select>
-        <label for="hl-coins">自动查询币种</label>
-        <textarea id="hl-coins" rows="2" maxlength="6000" placeholder="W, BTC, ETH"></textarea>
-        <small>英文逗号或换行分隔，最多 100 个。只查当前卡片中的 HL 永续币种；后台标签页暂停。手动「查」始终可用。</small>
-        <small>「可开」表示未触及 HL 公共持仓上限。结果 30 秒后显示「待查」。</small>
+        <label for="hl-scope">查询范围</label>
+        <select id="hl-scope"><option value="all">全部卡片币种</option><option value="selected" selected>指定币种</option></select>
+        <div id="hl-coins-group">
+          <label for="hl-coins">自动查询币种</label>
+          <textarea id="hl-coins" rows="2" maxlength="6000" placeholder="W, BTC, ETH"></textarea>
+        </div>
+        <small>仅查询当前卡片中的 HL 永续币种。同币种去重；后台标签页暂停。手动「查」始终可用。</small>
+        <small>「可」表示未触及 HL 公共持仓上限，「限」表示受限。结果 30 秒后显示「待查」。</small>
+      </fieldset>
+      <fieldset>
+        <legend>限制解除提醒</legend>
+        <label class="toggle"><input id="hl-release-alert" type="checkbox" checked> 开启提醒（声音 + 抖动）</label>
+        <label for="hl-release-coins">提醒币种</label>
+        <textarea id="hl-release-coins" rows="2" maxlength="6000" placeholder="例如 W, BTC"></textarea>
+        <small>只提醒这里指定的币种，留空不提醒。逗号或换行分隔，最多 100 个；与查询范围独立。</small>
+        <small>从「限」恢复「可」时提醒一次，首次查询为「可」不报警。自动提醒需该币种包含在自动查询范围内并有对应卡片。</small>
       </fieldset>
       <button type="submit">保存并启用</button>
     </form>

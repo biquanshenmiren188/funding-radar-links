@@ -19,8 +19,8 @@ test('malformed cap/meta data cannot become green', () => {
   assert.equal(classify('BTC',{universe:[{name:'BTC'},{name:'btc'}]},[]).state,'unknown');
 });
 test('auto query defaults off, bounds interval, normalizes explicit coin allowlist', () => {
-  assert.deepEqual(settings(), {enabled:false,interval:60,coins:[]});
-  assert.deepEqual(settings({enabled:true,interval:1,coins:'w, BTC，w\neth'}),{enabled:true,interval:60,coins:['W','BTC','ETH']});
+  assert.deepEqual(settings(), {enabled:false,mode:"selected",interval:60,coins:[]});
+  assert.deepEqual(settings({enabled:true,interval:1,coins:'w, BTC，w\neth'}),{enabled:true,mode:'selected',interval:60,coins:['W','BTC','ETH']});
   for(const interval of [30,60,120,300]) assert.equal(settings({interval}).interval,interval);
   assert.equal(settings({coins:Array.from({length:110},(_,i)=>'X'+i).join(',')}).coins.length,100);
 });

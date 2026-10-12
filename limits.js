@@ -13,10 +13,14 @@
       return previous?.state === "restricted" && result.state === "open";
     };
   }
-  function settings(value = {}) {
-    const coins = [...new Set(String(value.coins || "").split(/[\s,，;；]+/)
+  function parseCoins(value) {
+    return [...new Set(String(value || "").split(/[\s,，;；]+/)
       .map(s => s.trim().toUpperCase()).filter(s => s && s.length <= 60))].slice(0, 100);
-    return { enabled: value.enabled === true, interval: [30, 60, 120, 300].includes(Number(value.interval)) ? Number(value.interval) : 60, coins };
+  }
+  function settings(value = {}) {
+    return { enabled: value.enabled === true, mode: value.mode === "all" ? "all" : "selected",
+      interval: [30, 60, 120, 300].includes(Number(value.interval)) ? Number(value.interval) : 60,
+      coins: parseCoins(value.coins) };
   }
   function classify(symbol, meta, caps) {
     if (typeof symbol !== "string" || !symbol.trim() || symbol.length > 60 || symbol.includes(":")) {
@@ -79,6 +83,6 @@
       }
     };
   }
-  root.FundingRadarLimits = { settings, classify, createClient, createReleaseTracker, FRESH_MS };
+  root.FundingRadarLimits = { parseCoins, settings, classify, createClient, createReleaseTracker, FRESH_MS };
   if (typeof module !== "undefined") module.exports = root.FundingRadarLimits;
 })(globalThis);

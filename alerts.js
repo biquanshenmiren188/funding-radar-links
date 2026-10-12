@@ -53,7 +53,7 @@
       const symbols = [...pending]; pending.clear();
       if (!symbols.length || doc.hidden) return;
       dismiss();
-      const message = `HL ${symbols.join("、")} 限制已解除 · 可开`;
+      const message = `HL ${symbols.join("、")} 限制已解除 · 可`;
       notice = doc.createElement("div");
       notice.className = "funding-radar-alert-notice";
       const status = doc.createElement("span");
