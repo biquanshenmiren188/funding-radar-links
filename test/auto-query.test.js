@@ -10,7 +10,7 @@ async function harness(config) {
   const document = {hidden:false, body:{}, querySelectorAll:()=>cards,
     addEventListener:(type,fn)=>handlers[type]=fn,removeEventListener:()=>{}};
   const sandbox = {
-    FundingRadarLimits:limits,
+    FundingRadarLimits:limits, FundingRadarAlerts:{createNotifier:()=>({notify(){},clear(){}})},
     FundingRadarLinking:{DEFAULT_RADAR_ORIGIN:'https://radar.example',readLimitCard:card=>card},
     document, location:{origin:'https://dashboard.example'},console,
     setTimeout:(fn,ms)=>{timers.set(++id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id),

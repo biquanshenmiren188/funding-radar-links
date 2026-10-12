@@ -47,3 +47,26 @@
 }
 .funding-radar-limit-status[data-state="open"] { color: #096c38; background: #e7f6eb; }
 .funding-radar-limit-status[data-state="restricted"] { color: #ad2424; background: #fff0ef; }
+@keyframes funding-radar-release-shake {
+  0%, 100% { translate: 0; }
+  20%, 60% { translate: -3px; }
+  40%, 80% { translate: 3px; }
+}
+.funding-radar-release-alert {
+  outline: 2px solid #139b5a !important; outline-offset: 2px;
+  animation: funding-radar-release-shake .45s ease-in-out 4 !important;
+}
+.funding-radar-release-alert .funding-radar-limit-status[data-state="open"] {
+  box-shadow: 0 0 0 2px #7dd6a3;
+}
+.funding-radar-alert-notice {
+  position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  max-width: min(460px, calc(100vw - 32px)); padding: 12px 16px;
+  border: 1px solid #139b5a; border-radius: 8px; background: #f0fff5; color: #154d32;
+  box-shadow: 0 4px 20px #0002; font: 14px/1.5 system-ui, sans-serif;
+}
+.funding-radar-alert-notice button { background: white; color: #154d32; border: 1px solid #8ebca1; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  .funding-radar-release-alert { animation: none !important; }
+}

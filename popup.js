@@ -25,7 +25,7 @@ async function applyToOpenTabs(origin, radarOrigin) {
     try {
       if (new URL(tab.url).origin !== origin) continue;
       await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ["content.css"] });
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["linking.js", "limits.js", "content.js"] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["linking.js", "limits.js", "alerts.js", "content.js"] });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: configuredOrigin => {
@@ -45,9 +45,10 @@ async function applyToOpenTabs(origin, radarOrigin) {
   }
 }
 
-chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery"]).then(({ siteOrigin, radarOrigin, hlAutoQuery }) => {
+chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert"]).then(({ siteOrigin, radarOrigin, hlAutoQuery, hlReleaseAlert }) => {
   siteInput.value = siteOrigin || "";
   radarInput.value = radarOrigin || "https://47.79.37.237";
+  document.querySelector("#hl-release-alert").checked = hlReleaseAlert !== false;
   const auto = FundingRadarLimits.settings(hlAutoQuery);
   document.querySelector("#hl-auto").checked = auto.enabled;
   document.querySelector("#hl-interval").value = String(auto.interval);
@@ -74,7 +75,7 @@ form.addEventListener("submit", async event => {
     const hlAutoQuery = { enabled: document.querySelector("#hl-auto").checked,
       interval: Number(document.querySelector("#hl-interval").value), coins: rawCoins };
     if (hlAutoQuery.enabled && !FundingRadarLimits.settings(hlAutoQuery).coins.length) throw new Error("请填写自动查询的币种，例如 W, BTC");
-    await chrome.storage.local.set({ siteOrigin: origin, radarOrigin, hlAutoQuery });
+    await chrome.storage.local.set({ siteOrigin: origin, radarOrigin, hlAutoQuery, hlReleaseAlert: document.querySelector("#hl-release-alert").checked });
     const result = await chrome.runtime.sendMessage({ type: "sync-script" });
     if (!result?.ok) throw new Error(result?.error || "注册页面脚本失败");
     if (previousOrigin && previousOrigin !== origin) {

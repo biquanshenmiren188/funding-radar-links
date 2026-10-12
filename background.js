@@ -17,7 +17,7 @@ async function syncScript() {
   await chrome.scripting.registerContentScripts([{
     id: SCRIPT_ID,
     matches: [match],
-    js: ["linking.js", "limits.js", "content.js"],
+    js: ["linking.js", "limits.js", "alerts.js", "content.js"],
     css: ["content.css"],
     runAt: "document_idle",
     persistAcrossSessions: true

@@ -20,6 +20,8 @@
       <fieldset>
         <legend>Hyperliquid 限额查询</legend>
         <label class="toggle"><input id="hl-auto" type="checkbox"> 开启自动查询</label>
+        <label class="toggle"><input id="hl-release-alert" type="checkbox" checked> 限制解除提醒（声音 + 抖动）</label>
+        <small>从「限制」恢复「可开」时提醒一次，复用页面报警音；首次查询可开不报警。</small>
         <label for="hl-interval">查询间隔</label>
         <select id="hl-interval"><option value="30">30 秒</option><option value="60" selected>1 分钟</option><option value="120">2 分钟</option><option value="300">5 分钟</option></select>
         <label for="hl-coins">自动查询币种</label>

@@ -7,6 +7,9 @@
   const pending = new Set();
   const limits = globalThis.FundingRadarLimits;
   const results = new Map();
+  const released = limits.createReleaseTracker();
+  const notifier = globalThis.FundingRadarAlerts.createNotifier();
+  let releaseAlert = true;
   const expiries = new Map();
   let autoSettings = limits.settings();
   let autoTimer;
@@ -28,6 +31,15 @@
     }
     if (stopped) return;
     results.set(key, result);
+    // A response arriving after the tab hides must not consume a release notification.
+    if (!document.hidden || result.state !== "open") {
+      const shouldAlert = released(key, result);
+      if (shouldAlert && releaseAlert) {
+        const cards = [...document.querySelectorAll(".ant-card")].filter(card =>
+          linking.readLimitCard(card)?.symbol.toUpperCase() === key);
+        notifier.notify(symbol, cards);
+      }
+    }
     expiries.set(key, setTimeout(renderAll, Math.max(0, result.checkedAt + limits.FRESH_MS - Date.now()) + 50));
     renderAll();
   }
@@ -44,7 +56,7 @@
       scheduleAuto();
     }, immediate ? 0 : autoSettings.interval * 1000);
   }
-  function visibilityChanged() { renderAll(); scheduleAuto(true); }
+  function visibilityChanged() { if (document.hidden) notifier.clear(); renderAll(); scheduleAuto(true); }
 
   function updateLimit(card, details, anchor) {
     let button = card.querySelector(".funding-radar-limit-button");
@@ -152,7 +164,7 @@
     if (!node) return;
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     // Price/position text changes do not change the destination. Observe only card identity changes.
-    if (node.closest(".funding-radar-link, .funding-radar-limit-status")) return;
+    if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice")) return;
     const row = node.closest("p");
     if (row && !/^交易所\s*[:：]/.test(row.textContent.trim())) return;
     if (node.matches(".ant-card")) queue(node);
@@ -165,6 +177,7 @@
 
   function stop() {
     stopped = true;
+    notifier.clear();
     clearTimeout(autoTimer);
     expiries.forEach(timer => clearTimeout(timer));
     results.clear();
@@ -178,11 +191,12 @@
     globalThis.__fundingRadarLinksStarted = false;
   }
 
-  chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery"]).then(({ siteOrigin, radarOrigin: savedRadarOrigin, hlAutoQuery }) => {
+  chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert"]).then(({ siteOrigin, radarOrigin: savedRadarOrigin, hlAutoQuery, hlReleaseAlert }) => {
     if (location.origin !== siteOrigin) {
       stop();
       return;
     }
+    releaseAlert = hlReleaseAlert !== false;
     autoSettings = limits.settings(hlAutoQuery);
     document.addEventListener("visibilitychange", visibilityChanged);
     scheduleAuto(true);
@@ -201,6 +215,7 @@
         stop();
         return;
       }
+      if (changes.hlReleaseAlert) { releaseAlert = changes.hlReleaseAlert.newValue !== false; if (!releaseAlert) notifier.clear(); }
       if (changes.hlAutoQuery) { autoSettings = limits.settings(changes.hlAutoQuery.newValue); scheduleAuto(true); }
       if (changes.radarOrigin) {
         radarOrigin = changes.radarOrigin.newValue || linking.DEFAULT_RADAR_ORIGIN;

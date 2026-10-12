@@ -1,6 +1,18 @@
 (function (root) {
   "use strict";
   const FRESH_MS = 30000;
+  function createReleaseTracker(now = Date.now) {
+    const known = new Map();
+    return (symbol, result) => {
+      if (!["open", "restricted"].includes(result?.state) || !Number.isFinite(result.checkedAt) ||
+          result.checkedAt > now() || now() - result.checkedAt >= FRESH_MS) return false;
+      const key = symbol.toUpperCase();
+      const previous = known.get(key);
+      if (previous && result.checkedAt <= previous.checkedAt) return false;
+      known.set(key, { state: result.state, checkedAt: result.checkedAt });
+      return previous?.state === "restricted" && result.state === "open";
+    };
+  }
   function settings(value = {}) {
     const coins = [...new Set(String(value.coins || "").split(/[\s,，;；]+/)
       .map(s => s.trim().toUpperCase()).filter(s => s && s.length <= 60))].slice(0, 100);
@@ -67,6 +79,6 @@
       }
     };
   }
-  root.FundingRadarLimits = { settings, classify, createClient, FRESH_MS };
+  root.FundingRadarLimits = { settings, classify, createClient, createReleaseTracker, FRESH_MS };
   if (typeof module !== "undefined") module.exports = root.FundingRadarLimits;
 })(globalThis);
