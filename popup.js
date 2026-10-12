@@ -3,6 +3,9 @@ const radarInput = document.querySelector("#radar-url");
 const form = document.querySelector("#settings");
 const status = document.querySelector("#status");
 const button = form.querySelector("button");
+const scopeInput = document.querySelector("#hl-scope");
+function updateScope() { document.querySelector("#hl-coins-group").hidden = scopeInput.value === "all"; }
+scopeInput.addEventListener("change", updateScope);
 
 function setStatus(message, error = false) {
   status.textContent = message;
@@ -25,12 +28,13 @@ async function applyToOpenTabs(origin, radarOrigin) {
     try {
       if (new URL(tab.url).origin !== origin) continue;
       await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ["content.css"] });
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["linking.js", "content.js"] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["linking.js", "limits.js", "alerts.js", "content.js"] });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: configuredOrigin => {
-          const base = new URL("/radar/", configuredOrigin);
-          document.querySelectorAll(".funding-radar-link").forEach(link => {
+          document.querySelectorAll("a.funding-radar-link").forEach(link => {
+            const path = "/radar/";
+            const base = new URL(path, configuredOrigin);
             const current = new URL(link.href);
             base.search = current.search;
             link.href = base.href;
@@ -44,9 +48,16 @@ async function applyToOpenTabs(origin, radarOrigin) {
   }
 }
 
-chrome.storage.local.get(["siteOrigin", "radarOrigin"]).then(({ siteOrigin, radarOrigin }) => {
+chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert", "hlReleaseCoins"]).then(({ siteOrigin, radarOrigin, hlAutoQuery, hlReleaseAlert, hlReleaseCoins }) => {
   siteInput.value = siteOrigin || "";
   radarInput.value = radarOrigin || "https://47.79.37.237";
+  document.querySelector("#hl-release-alert").checked = hlReleaseAlert !== false;
+  document.querySelector("#hl-release-coins").value = FundingRadarLimits.parseCoins(hlReleaseCoins).join(", ");
+  const auto = FundingRadarLimits.settings(hlAutoQuery);
+  scopeInput.value = auto.mode; updateScope();
+  document.querySelector("#hl-auto").checked = auto.enabled;
+  document.querySelector("#hl-interval").value = String(auto.interval);
+  document.querySelector("#hl-coins").value = auto.coins.join(", ");
   if (siteOrigin) setStatus("已配置。修改地址后点击保存即可更新链接。");
 });
 
@@ -65,7 +76,11 @@ form.addEventListener("submit", async event => {
       return;
     }
     const { siteOrigin: previousOrigin } = await chrome.storage.local.get("siteOrigin");
-    await chrome.storage.local.set({ siteOrigin: origin, radarOrigin });
+    const rawCoins = document.querySelector("#hl-coins").value;
+    const hlAutoQuery = { enabled: document.querySelector("#hl-auto").checked,
+      interval: Number(document.querySelector("#hl-interval").value), mode: scopeInput.value, coins: rawCoins };
+    if (hlAutoQuery.enabled && hlAutoQuery.mode !== "all" && !FundingRadarLimits.settings(hlAutoQuery).coins.length) throw new Error("请填写自动查询的币种，例如 W, BTC");
+    await chrome.storage.local.set({ siteOrigin: origin, radarOrigin, hlAutoQuery, hlReleaseAlert: document.querySelector("#hl-release-alert").checked, hlReleaseCoins: document.querySelector("#hl-release-coins").value });
     const result = await chrome.runtime.sendMessage({ type: "sync-script" });
     if (!result?.ok) throw new Error(result?.error || "注册页面脚本失败");
     if (previousOrigin && previousOrigin !== origin) {
