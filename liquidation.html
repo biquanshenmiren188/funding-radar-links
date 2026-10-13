@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>统一账户 · 借币上涨压力估算</title>
+  <link rel="stylesheet" href="liquidation.css">
+</head>
+<body><main>
+  <header><span class="eyebrow">Funding Radar Links · 本地计算</span><h1>借的币涨到几倍，会触及风险线？</h1><p>按借币所在的统一账户计算。分别查看交易所风险线和软件减仓线。</p></header>
+  <p id="context" class="notice">卡片 MMR、策略仓位不等于完整账户数据。请从借币账户填入同一时刻的权益、维保和该币全部敞口。</p>
+  <div class="layout">
+    <form id="calculator" autocomplete="off">
+      <fieldset><legend>1 · 账户与币种</legend><div class="grid">
+        <label>借币账户<select name="exchange"><option value="binance">BINANCE · Portfolio Margin</option><option value="bitget">BITGET · UTA</option></select></label>
+        <label>币种<input name="symbol" maxlength="60" placeholder="例如 RLC" required></label>
+        <label>当前标记价格（U）<input name="price" type="number" min="0.000000000001" step="any" required></label>
+        <label>账户调整后权益（U）<input name="equity" type="number" min="0.000000000001" step="any" required></label>
+        <label>账户总维持保证金（U）<input name="maintenance" type="number" min="0" step="any" required></label>
+      </div><p class="help">用整个账户的调整后权益与总维保，包含其他持仓、借款和挂单。不要填“可用余额”或某张卡片的仓位价值。</p></fieldset>
+      <fieldset><legend>2 · 这个币在借币账户的负债</legend><div class="grid">
+        <label>该币净负债市值（U）<input name="debt" type="number" min="0" step="any" required></label>
+        <label>计提维保的借款市值（U）<input name="borrowed" type="number" min="0" step="any" required></label>
+        <label>借款维持保证金率（%）<input name="borrowRate" type="number" min="0" max="100" step="any" required></label>
+      </div><p class="help">净负债按该币负债（含利息）减可抵扣的同币资产计算，再乘当前价格；本模型要求净负债非负。维保借款市值及费率用交易所当前档位口径。这里不是借币小时利率。</p></fieldset>
+      <fieldset><legend>3 · 对冲是否在同一个保证金账户</legend>
+        <label>合约所在账户<select name="hedge"><option value="elsewhere">其他交易所 / 其他账户 / 没有合约</option><option value="same">同一个统一账户，有该币 USDT 线性合约</option></select></label>
+        <p class="help">另一家交易所的浮盈不会自动补充这边的保证金。同交易所的不同子账户也要分别算。</p>
+        <div id="hedge-fields" class="grid" hidden>
+          <label>合约净名义价值（U）<input name="hedgeNotional" type="number" step="any"><small>多仓减空仓，按当前标记价；空头净敞口填负数。</small></label>
+          <label>合约维保计提名义价值（U）<input name="riskNotional" type="number" min="0" step="any"><small>按交易所单双向持仓规则计提，不能简单拿多空净额代替。</small></label>
+          <label>合约维持保证金率（%）<input name="futuresRate" type="number" min="0" max="100" step="any"></label>
+          <label>合约盈亏权益折算比例（%）<input name="credit" type="number" min="0" max="100" step="any"><small>按结算币实际抵押折扣填；全额计入为 100。</small></label>
+        </div>
+      </fieldset>
+      <fieldset><legend>4 · 风控与估算范围</legend><div class="grid">
+        <label>软件强制减仓 MMR（%，可选）<input name="software" type="number" min="0.000001" max="100" step="any" placeholder="填写软件设置里的阈值"></label>
+        <label>当前档位有效至价格几倍（可选）<input name="tierBound" type="number" min="1" step="any" placeholder="不清楚可留空，仅显示外推"></label>
+      </div><p class="help">档位上限需同时覆盖借款、合约和抵押折扣；到达任一新档位应重新计算。软件阈值仅在其 MMR 与本页 M/E 口径一致时适用，不代表软件一定成功执行。</p>
+      <label class="check"><input name="assumptions" type="checkbox" required>我确认该币敞口仅含上述净负债与 USDT 线性合约；其他币价格、仓位、档位和折扣保持不变。此结果是情景估算。</label></fieldset>
+      <div class="actions"><button type="submit">计算上涨风险线</button><button id="example" type="button" class="secondary">查看虚拟示例</button><button type="reset" class="secondary">清空</button></div>
+      <p class="help">插件不保存或上传输入。计算不会请求接口、读取 API 密钥或下单。</p>
+      <p id="error" role="alert"></p>
+    </form>
+    <section id="results" aria-live="polite" aria-label="估算结果">
+      <h2>估算结果</h2><p id="empty">填完左侧账户数据后计算。单看 MMR 无法推算价格翻倍空间。</p>
+      <div id="result-content" hidden>
+        <p id="result-label" class="eyebrow"></p><div id="main-result" class="number"></div><p id="price-result"></p>
+        <p id="confidence" class="notice"></p><dl id="metrics"></dl>
+        <h3>软件减仓线</h3><p id="software-result"></p>
+        <h3>上涨情景 · 固定档位外推</h3><div class="table-wrap"><table><thead><tr><th>涨至</th><th>调整后权益</th><th>M/E</th><th>风险线</th></tr></thead><tbody id="scenarios"></tbody></table></div>
+        <p class="help">M/E 越高越危险。币安官方 uniMMR 是 E/M，方向相反；不把看板显示的 MMR 直接当成币安 uniMMR。</p>
+      </div>
+      <details><summary>计算口径与官方规则</summary>
+        <p>价格变为 k 倍：权益 E(k) = 当前权益 +（同账户合约净名义价值 × 权益折算比例 − 该币净负债市值）× (k−1)。维保 M(k) = 当前总维保 +（借款市值 × 借款维保率 + 合约维保计提名义价值 × 合约维保率）× (k−1)。</p>
+        <p>币安 Portfolio Margin 使用 E/M = 1.05 的风险边界；Bitget UTA 使用 M/E = 100% 的首个减仓/强平风险边界，不将 160% 接管线当作安全空间。</p>
+        <p>这不是全账户多币联动或动态档位清算引擎。借款利息、资金费、价格基差、订单变化、抵押币涨跌、分档和滑点会改变结果。币本位合约、期权、Portfolio Margin Pro、GC 统一资金池不在本模型范围。</p>
+        <p><a href="https://www.binance.com/en/support/faq/detail/d0c3558829fa41eabeeaf3c32dbe1dad" target="_blank" rel="noreferrer">币安统一账户风控</a> · <a href="https://www.binance.com/en/support/faq/detail/4868b2f1aa6c4d08af973328462bb0bd" target="_blank" rel="noreferrer">币安计算规则</a> · <a href="https://www.bitget.org/support/articles/12560603895826" target="_blank" rel="noreferrer">Bitget UTA 清算规则</a></p>
+      </details>
+    </section>
+  </div>
+</main><script src="liquidation.js"></script><script src="liquidation-page.js"></script></body></html>

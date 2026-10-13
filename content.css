@@ -39,6 +39,8 @@
 .funding-radar-limit-button { background: transparent; cursor: pointer; font-family: inherit; }
 .funding-radar-limit-button:disabled { opacity: .55; cursor: wait; }
 .funding-radar-limit-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
+.funding-radar-borrow-button { background: transparent; cursor: pointer; font-family: inherit; }
+.funding-radar-borrow-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
 .funding-radar-limit-status {
   display: inline-block; vertical-align: middle; white-space: nowrap;
   margin: 0 6px 0 0; padding: 0 3px; border-radius: 3px;
@@ -70,3 +72,14 @@
 @media (prefers-reduced-motion: reduce) {
   .funding-radar-release-alert { animation: none !important; }
 }
+.funding-radar-risk-row { flex-wrap: wrap; row-gap: 4px; }
+.funding-radar-risk { display: inline-flex; margin-left: 6px; max-width: 100%; }
+.funding-radar-risk button {
+  cursor: pointer; white-space: normal; overflow-wrap: anywhere; padding: 1px 5px;
+  border: 1px solid #cbd4df; border-radius: 4px; background: #f0f2f5; color: #525c68;
+  font: 600 12px/1.6 system-ui, sans-serif;
+}
+.funding-radar-risk button:focus-visible { outline: 2px solid #3976dc; outline-offset: 2px; }
+.funding-radar-risk button[data-state="space"] { border-color: #86c8a2; background: #e7f6eb; color: #096c38; }
+.funding-radar-risk button[data-state="danger"] { border-color: #e8a09b; background: #fff0ef; color: #ad2424; }
+.funding-radar-risk-detail { margin: 6px 0; padding: 8px; border: 1px solid #d7bb83; border-radius: 4px; background: #fff8e9; color: #66461d; font: 12px/1.6 system-ui, sans-serif; overflow-wrap: anywhere; }

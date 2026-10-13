@@ -57,7 +57,7 @@
       scheduleAuto();
     }, immediate ? 0 : autoSettings.interval * 1000);
   }
-  function visibilityChanged() { if (document.hidden) notifier.clear(); renderAll(); scheduleAuto(true); }
+  function visibilityChanged() { if (document.hidden) notifier.clear(); risk.visibilityChanged(); renderAll(); scheduleAuto(true); }
 
   function updateLimit(card, details, anchor) {
     let button = card.querySelector(".funding-radar-limit-button");
@@ -113,13 +113,18 @@
   let frame;
   let storageListener;
 
+  const risk = globalThis.FundingRadarInlineRisk.create({ linking });
+  function updateBorrow(card) { risk.render(card); }
+
   function updateCard(card) {
     const details = linking.readCard(card);
     const limitDetails = linking.readLimitCard(card);
+    const borrowDetails = linking.readBorrowCard(card);
     const oldLink = card.querySelector("a.funding-radar-link");
-    if (!details && !limitDetails) {
+    if (!details && !limitDetails && !borrowDetails) {
       oldLink?.remove();
       updateLimit(card, null);
+      updateBorrow(card, null);
       card.querySelector(".funding-radar-header")?.classList.remove("funding-radar-header");
       return;
     }
@@ -141,7 +146,8 @@
       }
     } else oldLink?.remove();
     updateLimit(card, limitDetails, link || limitDetails?.nameElement);
-    const nameElement = (details || limitDetails).nameElement;
+    updateBorrow(card, borrowDetails, card.querySelector(".funding-radar-limit-button") || link || borrowDetails?.nameElement);
+    const nameElement = (details || limitDetails || borrowDetails).nameElement;
     if (!nameElement.title) nameElement.title = nameElement.textContent.trim();
     if (!nameElement.parentElement.classList.contains("funding-radar-header")) {
       nameElement.parentElement.classList.add("funding-radar-header");
@@ -166,9 +172,9 @@
     if (!node) return;
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     // Price/position text changes do not change the destination. Observe only card identity changes.
-    if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice")) return;
+    if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice, .funding-radar-risk, .funding-radar-risk-detail")) return;
     const row = node.closest("p");
-    if (row && !/^交易所\s*[:：]/.test(row.textContent.trim())) return;
+    if (row && !/^(交易所|仓位数量)\s*[:：]/.test(row.textContent.trim()) && !row.classList.contains("mmr-row")) return;
     if (node.matches(".ant-card")) queue(node);
     else {
       const card = node.closest(".ant-card");
@@ -179,6 +185,7 @@
 
   function stop() {
     stopped = true;
+    risk.stop();
     notifier.clear();
     clearTimeout(autoTimer);
     expiries.forEach(timer => clearTimeout(timer));
@@ -203,6 +210,7 @@
     autoSettings = limits.settings(hlAutoQuery);
     document.addEventListener("visibilitychange", visibilityChanged);
     scheduleAuto(true);
+    risk.start();
     radarOrigin = savedRadarOrigin || linking.DEFAULT_RADAR_ORIGIN;
     document.querySelectorAll(".ant-card").forEach(queue);
     observer = new MutationObserver(records => {
