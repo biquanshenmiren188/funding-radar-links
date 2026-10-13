@@ -113,13 +113,38 @@
   let frame;
   let storageListener;
 
+  function updateBorrow(card, details, anchor) {
+    let button = card.querySelector(".funding-radar-borrow-button");
+    if (!details) { button?.remove(); return; }
+    if (!button) {
+      button = document.createElement("button");
+      button.type = "button";
+      button.className = "funding-radar-link funding-radar-borrow-button";
+      button.textContent = "爆仓估算";
+      button.addEventListener("click", async event => {
+        event.preventDefault(); event.stopPropagation();
+        const current = linking.readBorrowCard(card);
+        if (!current) return;
+        try {
+          const response = await chrome.runtime.sendMessage({ type: "open-borrow-calculator", exchange: current.exchange, symbol: current.symbol });
+          if (!response?.ok) throw new Error("未能打开");
+        } catch (_) { button.textContent = "刷新后重试"; }
+      });
+    }
+    button.title = `估算借 ${details.exchange.toUpperCase()} ${details.symbol} 的统一账户上涨风险线`;
+    button.setAttribute("aria-label", button.title);
+    if (button.previousElementSibling !== anchor) anchor.insertAdjacentElement("afterend", button);
+  }
+
   function updateCard(card) {
     const details = linking.readCard(card);
     const limitDetails = linking.readLimitCard(card);
+    const borrowDetails = linking.readBorrowCard(card);
     const oldLink = card.querySelector("a.funding-radar-link");
-    if (!details && !limitDetails) {
+    if (!details && !limitDetails && !borrowDetails) {
       oldLink?.remove();
       updateLimit(card, null);
+      updateBorrow(card, null);
       card.querySelector(".funding-radar-header")?.classList.remove("funding-radar-header");
       return;
     }
@@ -141,7 +166,8 @@
       }
     } else oldLink?.remove();
     updateLimit(card, limitDetails, link || limitDetails?.nameElement);
-    const nameElement = (details || limitDetails).nameElement;
+    updateBorrow(card, borrowDetails, card.querySelector(".funding-radar-limit-button") || link || borrowDetails?.nameElement);
+    const nameElement = (details || limitDetails || borrowDetails).nameElement;
     if (!nameElement.title) nameElement.title = nameElement.textContent.trim();
     if (!nameElement.parentElement.classList.contains("funding-radar-header")) {
       nameElement.parentElement.classList.add("funding-radar-header");

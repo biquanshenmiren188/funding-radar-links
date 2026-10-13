@@ -2,6 +2,19 @@ importScripts("limits.js");
 const queryLimit = FundingRadarLimits.createClient();
 const SCRIPT_ID = "funding-radar-links";
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "open-borrow-calculator") return;
+  (async () => {
+    const { siteOrigin } = await chrome.storage.local.get("siteOrigin");
+    if (!sender.tab || !siteOrigin || new URL(sender.url).origin !== siteOrigin) throw new Error("来源未授权");
+    if (!["binance", "bitget"].includes(message.exchange) || typeof message.symbol !== "string" || !message.symbol.trim() || message.symbol.length > 60) throw new Error("无效的卡片参数");
+    const hash = new URLSearchParams({ exchange: message.exchange, symbol: message.symbol });
+    await chrome.tabs.create({ url: chrome.runtime.getURL(`liquidation.html#${hash}`) });
+    return { ok: true };
+  })().then(sendResponse, () => sendResponse({ ok: false }));
+  return true;
+});
+
 async function syncScript() {
   const { siteOrigin } = await chrome.storage.local.get("siteOrigin");
   const registered = await chrome.scripting.getRegisteredContentScripts();

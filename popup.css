@@ -19,3 +19,5 @@ legend { font-weight: 650; }
 .toggle input { width: 16px; height: 16px; }
 select, textarea { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid #cbd4df; border-radius: 6px; font: inherit; }
 textarea { resize: vertical; }
+.calculator-entry { display: block; margin-bottom: 18px; padding: 12px; border: 1px solid #a6c9c1; border-radius: 7px; background: #edf8f5; color: #086653; font-weight: 650; text-decoration: none; }
+.calculator-entry:focus-visible { outline: 2px solid #3976dc; }

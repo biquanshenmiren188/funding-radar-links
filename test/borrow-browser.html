@@ -1,0 +1,10 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>虚拟卡片 · 估算入口验收</title>
+<link rel="stylesheet" href="../content.css"><style>body{font:16px system-ui;background:#f3f6f8;padding:20px}.ant-card{background:white;border:1px solid #ccd5dd;padding:16px;margin:16px 0;width:300px;max-width:90%}.ant-card-head{display:flex}.pair-name-link{font-weight:bold}.ant-tag{padding:2px 4px}.ant-tag-gold{background:#fff5c2}.ant-tag-green{background:#e0f6dc}button{cursor:pointer}#status{white-space:pre-wrap}</style>
+<h1>虚拟卡片验收</h1><p>本页使用真实插件脚本与模拟 Chrome 消息桥，不连接交易所。</p>
+<div class="ant-card"><div class="ant-card-head"><div><span class="pair-name-link">DEMO</span></div></div><p>交易所: <span class="ant-tag ant-tag-gold">binance</span> <span id="venue" class="ant-tag ant-tag-green">bitget</span></p><p>仓位价值(U): 100 / 100</p></div>
+<button id="gc">改为 GC 借币（应移除估算入口）</button><button id="native">改回原生借币</button><output id="status"></output>
+<script>
+window.chrome={storage:{local:{get:async()=>({siteOrigin:location.origin})},onChanged:{addListener(){},removeListener(){}}},runtime:{sendMessage:async m=>{document.getElementById('status').textContent=JSON.stringify(m);if(m.type==='open-borrow-calculator') {location.href='../liquidation.html#'+new URLSearchParams({exchange:m.exchange,symbol:m.symbol});return {ok:true};}return {state:'unknown',checkedAt:Date.now()};}}};
+document.getElementById('gc').onclick=()=>document.getElementById('venue').textContent='gc-binance';
+document.getElementById('native').onclick=()=>document.getElementById('venue').textContent='binance';
+</script><script src="../linking.js"></script><script src="../limits.js"></script><script src="../alerts.js"></script><script src="../content.js"></script></html>

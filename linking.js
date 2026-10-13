@@ -54,6 +54,15 @@
     return { nameElement, symbol, mode, exchanges };
   }
 
+  function readBorrowCard(card) {
+    const e = cardElements(card);
+    if (!e || e.symbol.length > 60 || legType(e.tags[0].classList) !== "F" || legType(e.tags[1].classList) !== "S") return null;
+    // Do not normalize GC into a native unified account: the collateral pool differs.
+    const exchange = e.tags[1].textContent.trim().toLowerCase();
+    if (!["binance", "bitget"].includes(exchange)) return null;
+    return { nameElement: e.nameElement, symbol: e.symbol, exchange };
+  }
+
   function readLimitCard(card) {
     const elements = cardElements(card);
     if (!elements || elements.symbol.length > 60) return null;
@@ -80,6 +89,6 @@
     return url.href;
   }
 
-  root.FundingRadarLinking = { normalizeSymbol, normalizeExchange, readCard, makeRadarUrl, readLimitCard, DEFAULT_RADAR_ORIGIN };
+  root.FundingRadarLinking = { normalizeSymbol, normalizeExchange, readCard, makeRadarUrl, readLimitCard, readBorrowCard, DEFAULT_RADAR_ORIGIN };
   if (typeof module !== "undefined") module.exports = root.FundingRadarLinking;
 })(globalThis);

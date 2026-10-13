@@ -1,6 +1,19 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { readCard, makeRadarUrl, normalizeSymbol } = require("../linking.js");
+const { readBorrowCard } = require("../linking.js");
+
+test('borrow shortcut uses native FS spot venue, never GC or FF/SF',()=>{
+  for(const exchange of ['binance','bitget']) {
+    const details=readBorrowCard(card('🟩RLC',['gold','green'],['unknown',exchange]));
+    assert.equal(details.exchange,exchange);
+    assert.equal(details.symbol,'RLC');
+    assert.equal(readBorrowCard(card('RLC',['gold','green'],['binance','gc-'+exchange])),null);
+    assert.equal(readBorrowCard(card('RLC',['gold','gold'],['binance',exchange])),null);
+    assert.equal(readBorrowCard(card('RLC',['green','gold'],['binance',exchange])),null);
+  }
+  assert.equal(readBorrowCard(card('RLC',['gold','green'],['binance','gate'])),null);
+});
 
 function card(symbol, colors, exchanges = ["aster", "binance"]) {
   const nameElement = { textContent: symbol };

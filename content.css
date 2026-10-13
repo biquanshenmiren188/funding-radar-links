@@ -39,6 +39,8 @@
 .funding-radar-limit-button { background: transparent; cursor: pointer; font-family: inherit; }
 .funding-radar-limit-button:disabled { opacity: .55; cursor: wait; }
 .funding-radar-limit-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
+.funding-radar-borrow-button { background: transparent; cursor: pointer; font-family: inherit; }
+.funding-radar-borrow-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
 .funding-radar-limit-status {
   display: inline-block; vertical-align: middle; white-space: nowrap;
   margin: 0 6px 0 0; padding: 0 3px; border-radius: 3px;
