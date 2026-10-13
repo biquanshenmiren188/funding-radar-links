@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Funding Radar Links",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "卡片雷达入口与 Hyperliquid 公共限仓查询，可设置自动查询币种和间隔。",
   "action": {
     "default_title": "Funding Radar Links",

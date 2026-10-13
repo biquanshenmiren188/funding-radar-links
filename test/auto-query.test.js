@@ -11,6 +11,7 @@ async function harness(config, alertCoins = "", alertEnabled = true) {
   const document = {hidden:false, body:{}, querySelectorAll:()=>cards,
     addEventListener:(type,fn)=>handlers[type]=fn,removeEventListener:()=>{}};
   const sandbox = {
+    FundingRadarInlineRisk:{create:()=>({start(){},stop(){},render(){},visibilityChanged(){}})},
     FundingRadarLimits:{...limits,createReleaseTracker:()=>limits.createReleaseTracker(()=>clock)}, FundingRadarAlerts:{createNotifier:()=>({notify(symbol){alerts.push(symbol)},clear(){}})},
     FundingRadarLinking:{DEFAULT_RADAR_ORIGIN:'https://radar.example',readLimitCard:card=>card},
     document, location:{origin:'https://dashboard.example'},console,

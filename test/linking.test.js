@@ -5,7 +5,7 @@ const { readBorrowCard } = require("../linking.js");
 
 test('borrow shortcut uses native FS spot venue, never GC or FF/SF',()=>{
   for(const exchange of ['binance','bitget']) {
-    const details=readBorrowCard(card('🟩RLC',['gold','green'],['unknown',exchange]));
+    const details=readBorrowCard(card('🟩RLC',['gold','green','blue'],['unknown',exchange,'全']));
     assert.equal(details.exchange,exchange);
     assert.equal(details.symbol,'RLC');
     assert.equal(readBorrowCard(card('RLC',['gold','green'],['binance','gc-'+exchange])),null);
@@ -15,7 +15,7 @@ test('borrow shortcut uses native FS spot venue, never GC or FF/SF',()=>{
   assert.equal(readBorrowCard(card('RLC',['gold','green'],['binance','gate'])),null);
 });
 
-function card(symbol, colors, exchanges = ["aster", "binance"]) {
+function card(symbol, colors, exchanges = ["aster", "binance"], quantity = "100 / 100") {
   const nameElement = { textContent: symbol };
   const tags = colors.map((color, index) => ({
     textContent: exchanges[index],
@@ -23,11 +23,11 @@ function card(symbol, colors, exchanges = ["aster", "binance"]) {
   }));
   const row = {
     textContent: `交易所: ${exchanges.join(" ")}`,
-    querySelectorAll: selector => selector === ".ant-tag" ? tags : []
+    querySelectorAll: selector => [".ant-tag", "span"].includes(selector) ? tags : []
   };
   return {
     querySelector: selector => selector === ".ant-card-head .pair-name-link" ? nameElement : null,
-    querySelectorAll: selector => selector === "p" ? [row] : []
+    querySelectorAll: selector => selector === "p" ? [row, {textContent: `仓位数量: ${quantity}`}] : []
   };
 }
 
@@ -121,4 +121,10 @@ test('HL query keeps exact coin names and rejects overlong identity',()=>{
   assert.equal(readLimitCard(card(symbol,['gold','gold'],['gc-hl','gate'])).symbol,symbol);
  }
  assert.equal(readLimitCard(card('X'.repeat(61),['gold','gold'],['hl','gate'])),null);
+});
+
+test('borrow estimate requires cross marker and positive sold quantity',()=>{
+ for (const marker of ['逐','','普通']) assert.equal(readBorrowCard(card('DEMO',['gold','green','blue'],['binance','bitget',marker])),null);
+ for (const qty of ['100 / 0','100 / --','100 / -1','100 / Infinity']) assert.equal(readBorrowCard(card('DEMO',['gold','green','blue'],['binance','bitget','全'],qty)),null);
+ assert.ok(readBorrowCard(card('DEMO',['gold','green','blue'],['binance','bitget','全'],'1,000 / 1,000')));
 });

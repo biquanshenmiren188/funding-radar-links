@@ -38,7 +38,7 @@
     const tags = Array.from(exchangeRow?.querySelectorAll(".ant-tag") || [])
       .filter(tag => legType(tag.classList));
     if (tags.length !== 2) return null;
-    return { nameElement, symbol, tags };
+    return { nameElement, symbol, tags, exchangeRow };
   }
 
   function readCard(card) {
@@ -60,6 +60,10 @@
     // Do not normalize GC into a native unified account: the collateral pool differs.
     const exchange = e.tags[1].textContent.trim().toLowerCase();
     if (!["binance", "bitget"].includes(exchange)) return null;
+    if (![...e.exchangeRow.querySelectorAll("span")].some(el => el.textContent.trim() === "全")) return null;
+    const position = [...card.querySelectorAll("p")].find(row => /^仓位数量\s*[:：]/.test(row.textContent.trim()));
+    const quantity = position?.textContent.split(/[:：]/).slice(1).join(":").split("/")[1]?.trim().replace(/,/g, "");
+    if (!quantity || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0) return null;
     return { nameElement: e.nameElement, symbol: e.symbol, exchange };
   }
 
