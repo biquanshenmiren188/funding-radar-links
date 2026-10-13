@@ -20,7 +20,7 @@
     }
     function render(card) {
       const details = linking.readBorrowCard(card), row = card.querySelector(".mmr-row");
-      if (!running || !details || !row || document.hidden) { remove(card); return; }
+      if (!running || !details || !row) { remove(card); return; }
       card.querySelector(".funding-radar-borrow-button")?.remove();
       let wrap = card.querySelector(".funding-radar-risk");
       if (wrap && wrap.parentElement !== row) { remove(card); wrap = null; }
@@ -41,13 +41,17 @@
       }
       if (!row.classList.contains("funding-radar-risk-row")) row.classList.add("funding-radar-risk-row");
       const fresh = report && Date.now() - report.capturedAt <= 60000;
-      const result = fresh ? report.rows.find(r => r.exchange === details.exchange && r.symbol === details.symbol) : null;
-      const view = describe(result, error || (!fresh ? "正在读取最新账户，旧结果不再使用" : null));
+      const result = report?.rows.find(r => r.exchange === details.exchange && r.symbol === details.symbol);
+      const view = describe(result, error);
+      // Keep the last value through visibility changes, without presenting it as live.
+      const previous = report && !fresh;
+      if (previous) view.state = "unknown";
       const button = wrap.firstElementChild;
       if (button.textContent !== view.label) button.textContent = view.label;
       if (button.dataset.state !== view.state) button.dataset.state = view.state;
-      const title = view.detail + (fresh ? ` 读取 ${new Date(report.capturedAt).toLocaleTimeString("zh-CN", { hour12: false })}，每 30 秒更新。` : "");
-      if (button.title !== title) { button.title = title; button.setAttribute("aria-label", `上涨空间粗估 ${view.label}，点击查看估算口径`); }
+      const status = previous ? "上次结果，已过期，等待更新。" : "";
+      const title = status + view.detail + (report ? ` 读取 ${new Date(report.capturedAt).toLocaleTimeString("zh-CN", { hour12: false })}，每 30 秒自动更新。` : "");
+      if (button.title !== title) { button.title = title; button.setAttribute("aria-label", `${status}上涨空间粗估 ${view.label}，点击查看估算口径`); }
       const detail = card.querySelector(".funding-radar-risk-detail");
       if (detail && detail.textContent !== title) detail.textContent = title;
       if (!busy && Date.now() - attempted >= 30000) schedule(0);
@@ -55,28 +59,29 @@
     function renderAll() { cards().forEach(render); }
     function schedule(delay) {
       clearTimeout(timer);
-      if (running && !document.hidden) timer = setTimeout(read, delay);
+      if (running) timer = setTimeout(read, delay);
     }
     async function read() {
-      if (!running || document.hidden || busy) return;
+      if (!running || busy) return;
       if (!cards().some(card => linking.readBorrowCard(card) && card.querySelector(".mmr-row"))) { schedule(30000); return; }
       busy = true; attempted = Date.now(); const token = generation;
+      renderAll();
       try {
         const response = await chrome.runtime.sendMessage({ type: "read-frontend-risk" });
-        if (token !== generation || !running || document.hidden) return;
+        if (token !== generation || !running) return;
         if (!response?.ok || !Array.isArray(response.report?.rows) || !Number.isFinite(response.report.capturedAt) || Date.now() - response.report.capturedAt > 60000 || response.report.capturedAt > Date.now() + 5000) throw new Error(response?.error || "读取失败，旧结果已弃用");
         report = response.report; error = null;
       } catch (e) {
         if (token === generation) { report = null; error = e.message || "读取失败"; }
       } finally {
         busy = false;
-        if (running) { renderAll(); schedule(token === generation ? 30000 : 0); }
+        if (running) { renderAll(); schedule(Math.max(0, 30000 - (Date.now() - attempted))); }
       }
     }
     return {
       render,
       start() { running = true; schedule(0); },
-      visibilityChanged() { generation++; report = null; attempted = 0; error = "正在读取最新账户"; renderAll(); schedule(0); },
+      visibilityChanged() { renderAll(); if (!busy && Date.now() - attempted >= 30000) schedule(0); },
       stop() { running = false; generation++; report = null; clearTimeout(timer); cards().forEach(remove); }
     };
   }
