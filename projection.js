@@ -6,6 +6,10 @@
   // for freshness, pagination and conflicting-sample validation.
   const minuteBucket = t => Math.floor(t / MINUTE) * MINUTE;
   const EXCHANGES = ["binance", "aster", "bybit", "bitget", "gate", "okx", "hyperliquid"];
+  // Selected independently by venue, then accepted on a separate coin holdout.
+  // This changes only the unknown future premium, never a venue's fee formula.
+  const FORECAST_METHODS = Object.freeze({ binance: "minute", aster: "minute", gate: "ema30",
+    bybit: "last", bitget: "last", okx: "last", hyperliquid: "official" });
   const UNVERIFIED = Object.freeze({});
   // 0.005 percentage points, exclusively the historical sampling uncertainty.
   // Future market movement is not bounded by this threshold.
@@ -53,7 +57,7 @@
       if (old && old.t !== row.t) throw new Error("同一分钟存在多个溢价采样，口径未核实");
       byMinute.set(index, row);
     }
-    let past = 0, weight = 0, low = 0, high = 0;
+    let past = 0, weight = 0, low = 0, high = 0, ema30;
     for (let i = 0; i < minutes; i++) {
       const r = byMinute.get(i);
       if (!r || (r.count !== undefined && r.count !== samples)) {
@@ -61,6 +65,7 @@
         throw new Error(`本周期历史溢价有缺口：${stamp}（UTC+8）${r ? `采样 ${r.count}/${samples}` : "尚未返回"}，等待官方补齐后自动重试`);
       }
       latest = r; // The extrapolation anchor must belong to validated, completed history.
+      ema30 = i === 0 ? r.p : (2 / 31) * r.p + (29 / 31) * ema30;
       const first = i * samples + 1;
       const w = equal ? samples : (first + first + samples - 1) * samples / 2;
       past += r.p * w; weight += w;
@@ -71,7 +76,7 @@
         low += r.low * w; high += r.high * w;
       } else { low += r.p * w; high += r.p * w; }
     }
-    return { past, weight, latest, low, high };
+    return { past, weight, latest, low, high, ema30 };
   }
   // Uses the same sample alignment and weights as live projections, for historical audits.
   function reconstruct(config, rows) {
@@ -111,7 +116,7 @@
     }
     const dataAsOf = start + elapsed * MINUTE;
     const historyLagMinutes = Math.max(0, (expectedAsOf - dataAsOf) / MINUTE);
-    const { past, weight, latest, low, high } = weightedHistory(config, rows, elapsed, dataAsOf);
+    const { past, weight, latest, low, high, ema30 } = weightedHistory(config, rows, elapsed, dataAsOf);
     if (!latest || now - latest.t > 120000 + maxLag * MINUTE) throw new Error("最新溢价尚未更新，稍后重试");
     if (config.verifyGate && weight > 0 &&
         (!Number.isFinite(config.officialRate) || Math.abs(fee(past / weight, config) - config.officialRate) > 0.00000050001)) {
@@ -120,17 +125,21 @@
     const n = hours * 60 * samples;
     const total = equal ? n : n * (n + 1) / 2;
     const futureWeight = total - weight;
-    const average = (past + latest.close * futureWeight) / total;
-    const lower = fee((low + latest.close * futureWeight) / total, config);
-    const upper = fee((high + latest.close * futureWeight) / total, config);
+    const forecastMethod = config.forecastMethod || "last";
+    if (!["last", "minute", "ema30"].includes(forecastMethod)) throw new Error("外推方法未核实");
+    const forecastPremium = forecastMethod === "minute" ? latest.p : forecastMethod === "ema30" ? ema30 : latest.close;
+    const anchorLabel = forecastMethod === "minute" ? "最新完整分钟的 OHLC 近似均值" : forecastMethod === "ema30" ? "本周期完整分钟的 EMA30 平滑溢价（系数 2/31）" : "最新完整分钟的末次溢价";
+    const average = (past + forecastPremium * futureWeight) / total;
+    const lower = fee((low + forecastPremium * futureWeight) / total, config);
+    const upper = fee((high + forecastPremium * futureWeight) / total, config);
     const predicted = fee(average, config);
     const samplingError = Math.max(predicted - lower, upper - predicted, 0);
     return { predicted, lower, upper, samplingError, rangeOnly: !!config.bounded && samplingError > MAX_SAMPLING_ERROR,
-      currentPremium: latest.close, premiumAt: latest.t, dataAsOf, historyLagMinutes, futureWeightRatio: futureWeight / total, average,
+      currentPremium: latest.close, forecastPremium, forecastMethod, premiumAt: latest.t, dataAsOf, historyLagMinutes, futureWeightRatio: futureWeight / total, average,
       observedMinutes: elapsed, totalMinutes: hours * 60, end, hours, floor, cap,
       officialRate: config.officialRate, checkedAt: now,
       method: config.verifyGate ? "Gate 分钟溢价按标记价/指数价换算 · 时间递增加权 · 已核对官方当前费率" : samples === 12 ? "分钟 OHLC 近似 5 秒采样；用每分钟高低值计算采样误差区间" : "官方分钟溢价采样",
-      assumption: "以最新完整分钟的末次溢价外推剩余时间；分钟内保持同一数据快照，非最终结算费率" };
+      assumption: `以${anchorLabel}外推剩余时间；分钟内保持同一数据快照，未来行情变化仍可造成较大偏差，非最终结算费率` };
   }
   function createClient(fetcher = fetch, clock = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)), { queryTimeoutMs = 20000 } = {}) {
     const flights = new Map(), cache = new Map(), history = new Map(), requests = new Map();
@@ -298,6 +307,7 @@
       if (Math.abs(clock() - serverTime) > 120000) throw new Error("官方行情时间已过期");
       const samples = ["binance", "aster", "bitget"].includes(exchange) ? 12 : 1;
       return { hours, end, start: end - hours * 3600000, floor, cap, interest, officialRate,
+        forecastMethod: FORECAST_METHODS[exchange],
         divisor: exchange === "bybit" ? 1 : 8 / hours, samples,
         // Bybit's 1m close stamped at start + 1m is the first settlement sample.
         // Confirmed against 1h, 4h, 8h completed periods; OKX uses [start, end).
@@ -447,6 +457,6 @@
     }
     return query;
   }
-  root.FundingRadarProjection = { project, reconstruct, reconstructRange, fee, gatePremiumRows, createClient, EXCHANGES, UNVERIFIED, MAX_SAMPLING_ERROR };
+  root.FundingRadarProjection = { project, reconstruct, reconstructRange, fee, gatePremiumRows, createClient, EXCHANGES, FORECAST_METHODS, UNVERIFIED, MAX_SAMPLING_ERROR };
   if (typeof module !== "undefined") module.exports = root.FundingRadarProjection;
 })(globalThis);

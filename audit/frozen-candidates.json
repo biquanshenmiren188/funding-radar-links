@@ -1,0 +1,172 @@
+{
+  "frozenAt": "2026-10-15T16:41:01.461Z",
+  "developmentReportSHA256": "9ef0b14e8bbcad6d86df496b028dffe43e9fb5c7d066e9f036d0d15297e9eba7",
+  "rule": "Require lower train and validation MAE; minimize validation score = 0.5 normalized MAE + 0.3 normalized P95 + 0.2 normalized maximum. Retain last if no better risk score. Exploratory prior holdout has been inspected; a separate newly fetched coin cohort is the next acceptance check.",
+  "additionalCoins": [
+    "DOGE",
+    "SUI",
+    "FARTCOIN",
+    "HYPE"
+  ],
+  "acceptance": "Candidate must lower MAE on both temporal test and new coin holdout; P95 and max no more than 10% worse on either; three-minute lag MAE must not worsen. Otherwise retain the previous method. No alternative may be chosen using the new holdout.",
+  "selected": {
+    "binance": {
+      "method": "minute",
+      "ranking": [
+        {
+          "method": "minute",
+          "score": 0.9412218024572105
+        },
+        {
+          "method": "last",
+          "score": 1
+        },
+        {
+          "method": "mean5",
+          "score": 1.0185750442194141
+        },
+        {
+          "method": "ema15",
+          "score": 1.0481917029649508
+        }
+      ]
+    },
+    "aster": {
+      "method": "minute",
+      "ranking": [
+        {
+          "method": "minute",
+          "score": 0.8801195029149406
+        },
+        {
+          "method": "mean5",
+          "score": 0.9011420670187907
+        },
+        {
+          "method": "mean15",
+          "score": 0.9419284992492485
+        },
+        {
+          "method": "ema15",
+          "score": 0.9582118257723877
+        },
+        {
+          "method": "mean30",
+          "score": 0.9764887156097704
+        },
+        {
+          "method": "elapsed",
+          "score": 0.9767048807601788
+        },
+        {
+          "method": "ema30",
+          "score": 0.9984049990334225
+        },
+        {
+          "method": "last",
+          "score": 1
+        },
+        {
+          "method": "mean60",
+          "score": 1.001161870347563
+        }
+      ]
+    },
+    "bybit": {
+      "method": "mean30",
+      "ranking": [
+        {
+          "method": "mean30",
+          "score": 0.9160698543614877
+        },
+        {
+          "method": "ema30",
+          "score": 0.9313127015215598
+        },
+        {
+          "method": "mean15",
+          "score": 0.9350232808107599
+        },
+        {
+          "method": "elapsed",
+          "score": 0.9514633100769125
+        },
+        {
+          "method": "mean5",
+          "score": 0.9642965257367976
+        },
+        {
+          "method": "ema15",
+          "score": 0.9937729398313729
+        },
+        {
+          "method": "mean60",
+          "score": 0.9950449871882444
+        },
+        {
+          "method": "last",
+          "score": 1
+        }
+      ]
+    },
+    "bitget": {
+      "method": "last",
+      "ranking": [
+        {
+          "method": "last",
+          "score": 1
+        },
+        {
+          "method": "minute",
+          "score": 1.000556145136467
+        }
+      ]
+    },
+    "gate": {
+      "method": "ema30",
+      "ranking": [
+        {
+          "method": "ema30",
+          "score": 0.8224497060976592
+        },
+        {
+          "method": "mean30",
+          "score": 0.8347197867571453
+        },
+        {
+          "method": "mean60",
+          "score": 0.8425087253378005
+        },
+        {
+          "method": "ema15",
+          "score": 0.8434455797276754
+        },
+        {
+          "method": "mean15",
+          "score": 0.8477461755203631
+        },
+        {
+          "method": "elapsed",
+          "score": 0.8563845489016692
+        },
+        {
+          "method": "mean5",
+          "score": 0.9002756015529504
+        },
+        {
+          "method": "last",
+          "score": 1
+        }
+      ]
+    },
+    "okx": {
+      "method": "last",
+      "ranking": [
+        {
+          "method": "last",
+          "score": 1
+        }
+      ]
+    }
+  }
+}
