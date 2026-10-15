@@ -64,3 +64,16 @@ test('a slow exchange cannot monopolize slots and completed slots immediately se
   assert.equal(h.calls.length,count);
   h.ui.stop();
 });
+
+test('removed last card and disabled scope cancel worker requests; shared cards retain their request',async()=>{
+  const h=harness(()=>new Promise(()=>{}));h.ui.start({startMode:'all'});await h.flush();
+  const original=h.calls.filter(m=>m.type==='funding-projection');
+  h.cards[0].isConnected=false;await h.tick();
+  assert.ok(h.calls.some(m=>m.type==='funding-projection-cancel'&&m.requestId===original.find(m=>m.exchange==='binance').requestId));
+  assert.ok(!h.calls.some(m=>m.type==='funding-projection-cancel'&&m.requestId===original.find(m=>m.exchange==='okx').requestId));
+  h.ui.configure({startMode:'manual'});await h.flush();
+  const queries=h.calls.filter(m=>m.type==='funding-projection'),cancels=h.calls.filter(m=>m.type==='funding-projection-cancel');
+  assert.equal(cancels.length,queries.length);
+  assert.deepEqual(new Set(cancels.map(m=>m.requestId)),new Set(queries.map(m=>m.requestId)));
+  h.ui.stop();
+});

@@ -20,6 +20,7 @@
       ready: (k, symbol) => active(k, symbol) && now() >= (due.get(k) || 0),
       dueAt: k => due.get(k) || 0,
       requested(k) { due.set(k, now() + config.interval * 1000); },
+      failed(k) { due.set(k, now() + Math.max(config.interval, 30) * 1000); },
       configure(next) { config = next; due.clear(); },
       clear() { overrides.clear(); due.clear(); revisions.clear(); }
     };
@@ -29,6 +30,21 @@
     const views = new Map(), markets = new Map();
     const polling = createPolling(now);
     let settings = limits.fundingSettings(), timer, expiryTimer, stopped = false;
+    let sequence = 0;
+    const session = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    function cancel(k) {
+      const entry = pending.get(k);
+      if (!entry) return;
+      pending.delete(k);
+      void Promise.resolve().then(() => send({ type: "funding-projection-cancel", requestId: entry.id })).catch(() => {});
+    }
+    function progressMessage(message) {
+      if (message?.type !== "funding-projection-progress" || stopped) return;
+      for (const [k, entry] of pending) if (entry.id === message.requestId) {
+        entry.progress = message.progress; renderMarket(k); break;
+      }
+    }
+    const messages = root.chrome?.runtime?.onMessage;
     function cards() { return [...document.querySelectorAll(".ant-card")]; }
     function key(d, i) { return d.exchanges[i] + ":" + d.symbol.toUpperCase(); }
     function fresh(r) { return r?.ok && now() - r.checkedAt < 120000 && now() < r.end; }
@@ -41,7 +57,7 @@
       for (const k of old.keys) {
         const group = markets.get(k);
         group?.delete(card);
-        if (!group?.size) { markets.delete(k); results.delete(k); }
+        if (!group?.size) { markets.delete(k); results.delete(k); cancel(k); }
       }
       views.delete(card);
     }
@@ -93,7 +109,7 @@
             const current = linking.readCard(card); if (!current || current.mode[i] !== "F") return;
             const k = key(current, i);
             polling.toggle(k, current.symbol);
-            if (!polling.active(k, current.symbol)) results.delete(k);
+            if (!polling.active(k, current.symbol)) { results.delete(k); cancel(k); }
             renderMarket(k); tick();
           });
           leg.append(value, result, button); view.append(leg);
@@ -119,18 +135,22 @@
       state.legs.forEach((leg, i) => {
         if (values) text(leg.value, values[i]);
         const { button, output } = leg;
-        const r = results.get(key(d, i)), busy = pending.has(key(d, i));
+        const r = results.get(key(d, i)), entry = pending.get(key(d, i)), busy = !!entry;
+        const progress = entry?.progress;
         const running = polling.active(key(d, i), d.symbol);
         const isFresh = fresh(r);
         const signature = `${running}:${busy}:${isFresh}:${settings.interval}`;
         // Price ticks do not change funding results or their expensive date-formatted tooltips.
-        if (leg.signature === signature && leg.result === r) return;
-        leg.signature = signature; leg.result = r;
+        if (leg.signature === signature && leg.result === r && leg.progress === progress) return;
+        leg.signature = signature; leg.result = r; leg.progress = progress;
         property(button, "hidden", d.mode[i] !== "F"); property(button, "disabled", false);
         attr(button, "aria-label", `${running ? "停" : "算"} ${d.exchanges[i]} ${d.symbol} ${i === 0 ? "左" : "右"}合约结算费率`);
         attr(button, "aria-pressed", String(running));
-        const description = describe(r, d, i);
-        property(button, "title", (running ? `点击停止，每 ${settings.interval} 秒计算一次` : "点击开始自动计算") + (busy ? " · 查询中" : "") + "\n" + description);
+        const lag = r?.historyLagMinutes > 0 ? `\n完整历史延迟 ${r.historyLagMinutes} 分钟；延迟部分按末次完整溢价外推` : "";
+        const timing = r?.diagnostics ? `\n本轮用时 ${(r.diagnostics.elapsedMs / 1000).toFixed(1)} 秒；接口 ${r.diagnostics.requests.length} 次；排队 ${(r.diagnostics.requests.reduce((n, v) => n + v.queueMs, 0) / 1000).toFixed(1)} 秒` : "";
+        const description = describe(r, d, i) + lag + timing;
+        const stage = { queued: "排队中", request: "请求接口", history: "补历史中", repair: "补查缺口", retry: "重试中", received: "计算中", cache: "读取缓存" }[progress?.stage] || "查询中";
+        property(button, "title", (running ? `点击停止，每 ${settings.interval} 秒计算一次` : "点击开始自动计算") + (busy ? ` · ${stage}${progress?.endpoint ? "\n" + progress.endpoint : ""}` : "") + "\n" + description);
         attr(button, "aria-description", button.title);
         attr(button, "aria-busy", String(busy));
         text(button, running ? "停" : "算");
@@ -164,11 +184,12 @@
       const k = key(d, i); if (pending.has(k) || stopped || d.mode[i] !== "F") return;
       const revision = polling.revision(k);
       polling.requested(k);
-      const task = Promise.resolve().then(() => send({ type: "funding-projection", exchange: d.exchanges[i], symbol: d.symbol }));
-      pending.set(k, task); renderMarket(k);
-      try { const result = await task; if (!stopped && revision === polling.revision(k)) results.set(k, result); }
-      catch (_) { if (!stopped && revision === polling.revision(k)) results.set(k, { ok: false, error: "查询失败，下次自动重试" }); }
-      finally { pending.delete(k); if (!stopped) { renderMarket(k); tick(); } }
+      const entry = { id: session + "-" + ++sequence };
+      const task = Promise.resolve().then(() => pending.get(k) === entry ? send({ type: "funding-projection", requestId: entry.id, exchange: d.exchanges[i], symbol: d.symbol }) : null);
+      pending.set(k, entry); renderMarket(k);
+      try { const result = await task; if (!stopped && pending.get(k) === entry && revision === polling.revision(k)) { results.set(k, result); if (!result?.ok) polling.failed(k); } }
+      catch (_) { if (!stopped && pending.get(k) === entry && revision === polling.revision(k)) { results.set(k, { ok: false, error: "查询失败，下次自动重试" }); polling.failed(k); } }
+      finally { if (pending.get(k) === entry) pending.delete(k); if (!stopped) { renderMarket(k); tick(); } }
     }
     function tick() {
       if (stopped || document.hidden) return;
@@ -186,10 +207,13 @@
         if (!pending.has(k) && polling.ready(k, d.symbol)) void query(d, i);
       }
     }
-    return { render, updateIndex, configure(value) { settings = limits.fundingSettings(value); polling.configure(settings); renderAll(); tick(); },
+    return { render, updateIndex, configure(value) { settings = limits.fundingSettings(value); polling.configure(settings);
+      for (const k of pending.keys()) if (!polling.active(k, k.slice(k.indexOf(":") + 1))) cancel(k);
+      renderAll(); tick(); },
       visibilityChanged() { renderAll(); tick(); },
-      start(value) { stopped = false; settings = limits.fundingSettings(value); polling.configure(settings); cards().forEach(render); tick(); clearInterval(timer); timer = setInterval(tick, 1000); clearInterval(expiryTimer); expiryTimer = setInterval(renderAll, 5000); },
+      start(value) { stopped = false; messages?.removeListener(progressMessage); messages?.addListener(progressMessage); settings = limits.fundingSettings(value); polling.configure(settings); cards().forEach(render); tick(); clearInterval(timer); timer = setInterval(tick, 1000); clearInterval(expiryTimer); expiryTimer = setInterval(renderAll, 5000); },
       stop() { stopped = true; clearInterval(timer); clearInterval(expiryTimer); results.clear(); polling.clear();
+        messages?.removeListener(progressMessage); for (const k of pending.keys()) cancel(k);
         views.clear(); markets.clear();
         document.querySelectorAll(".funding-radar-projection, .funding-radar-projection-detail").forEach(el => el.remove());
         document.querySelectorAll(".funding-radar-index-source").forEach(el => el.classList.remove("funding-radar-index-source")); }

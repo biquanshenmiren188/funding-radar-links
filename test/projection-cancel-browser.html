@@ -1,0 +1,48 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>计算交互验收</title>
+<link rel="stylesheet" href="../content.css">
+<style>body{font:16px system-ui;color:#334155;background:#f5f7fa;padding:24px}#cards{display:flex;gap:16px;flex-wrap:wrap}.ant-card{background:white;border:1px solid #ddd;border-radius:10px;padding:20px;width:350px}.pair-name-link{font-weight:bold}p{margin:16px 0}#report{white-space:pre-wrap}button{cursor:pointer}</style>
+<h1>计算交互验收 · 1.8.7</h1><p>虚拟卡片，模拟延迟历史与慢请求；使用实际页面脚本，不访问账户。</p>
+<button id="run">自动验收停止与迟到响应</button><pre id="report">等待验收</pre><div id="cards"></div>
+<script>
+const progressListeners=new Set(),calls=[],pending=new Map();let automatic=false;
+for(const name of ['DEMO','COPY']){
+ const card=document.createElement('div');card.className='ant-card';
+ card.innerHTML='<div class="ant-card-head"><span class="pair-name-link">DEMO</span> · '+name+'</div><div class="ant-card-body"><p>交易所: <span class="ant-tag ant-tag-gold">aster</span> <span class="ant-tag ant-tag-gold">binance</span></p><p>实时指数: <span>0.0093 | 0.0123</span></p></div>';
+ document.getElementById('cards').append(card);
+}
+window.chrome={runtime:{onMessage:{addListener:f=>progressListeners.add(f),removeListener:f=>progressListeners.delete(f)}}};
+function send(m){
+ calls.push(m);
+ if(m.type==='funding-projection-cancel')return Promise.resolve({ok:true});
+ const result={ok:true,predicted:.00013,checkedAt:Date.now(),end:Date.now()+3600000,hours:4,currentPremium:.0001,average:.0001,officialRate:.0001,observedMinutes:197,totalMinutes:240,dataAsOf:Date.now()-180000,historyLagMinutes:3,method:'模拟完整历史',assumption:'尾部按末次完整分钟外推',diagnostics:{elapsedMs:1400,requests:[{queueMs:250}]}};
+ const promise=new Promise(resolve=>pending.set(m.requestId,()=>resolve(result)));
+ queueMicrotask(()=>progressListeners.forEach(f=>f({type:'funding-projection-progress',requestId:m.requestId,progress:{stage:'history',endpoint:'/premiumIndexKlines'}})));
+ if(!automatic)setTimeout(()=>pending.get(m.requestId)?.(),1500);
+ return promise;
+}
+</script>
+<script src="../linking.js"></script><script src="../limits.js"></script><script src="../projection-inline.js"></script>
+<script>
+const ui=FundingRadarProjectionInline.create({linking:FundingRadarLinking,limits:FundingRadarLimits,send});
+ui.start({startMode:'manual'});
+const frame=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+document.getElementById('run').onclick=async()=>{
+ automatic=true;ui.stop();ui.start({startMode:'manual'});
+ const result={},buttons=()=>[...document.querySelectorAll('.funding-radar-projection-button')];
+ buttons()[0].click();await frame();
+ result.sharedRequest=calls.filter(m=>m.type==='funding-projection').length===1;
+ result.progress=buttons()[0].title.includes('补历史中')&&buttons()[0].getAttribute('aria-busy')==='true';
+ const id=calls.find(m=>m.type==='funding-projection').requestId;
+ buttons()[0].click();await frame();
+ result.cancelSent=calls.some(m=>m.type==='funding-projection-cancel'&&m.requestId===id);
+ pending.get(id)();await frame();
+ result.lateIgnored=[...document.querySelectorAll('.funding-radar-projection-result')].every(el=>el.hidden);
+ result.sharedStopped=buttons()[0].textContent==='算'&&buttons()[2].textContent==='算';
+ automatic=false;buttons()[0].click();buttons()[1].click();
+ await new Promise(resolve=>setTimeout(resolve,1700));await frame();
+ result.delayTooltip=document.querySelector('.funding-radar-projection-result').title.includes('完整历史延迟 3 分钟');
+ result.singleLine=buttons()[0].getBoundingClientRect().top===buttons()[1].getBoundingClientRect().top;
+ result.font=getComputedStyle(buttons()[0]).fontSize;
+ document.getElementById('report').textContent=JSON.stringify(result,null,2);
+};
+</script></html>

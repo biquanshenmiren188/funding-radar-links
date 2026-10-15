@@ -68,13 +68,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 const queryProjection = FundingRadarProjection.createClient();
+const projectionRequests = new Map();
+chrome.tabs?.onRemoved?.addListener(tabId => {
+  for (const [key, entry] of projectionRequests) if (entry.tabId === tabId) {
+    entry.controller.abort(); projectionRequests.delete(key);
+  }
+});
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type !== "funding-projection") return;
+  if (!["funding-projection", "funding-projection-cancel"].includes(message?.type)) return;
   (async () => {
     const { siteOrigin } = await chrome.storage.local.get("siteOrigin");
     if (sender.id !== chrome.runtime.id || !Number.isInteger(sender.tab?.id) || sender.frameId !== 0 ||
         !siteOrigin || new URL(sender.url).origin !== siteOrigin) throw new Error("查询来源未授权");
-    return queryProjection(message.exchange, message.symbol);
+    const requestId = message.requestId;
+    if (typeof requestId !== "string" || requestId.length > 100) throw new Error("请求编号无效");
+    const key = sender.tab.id + ":" + requestId;
+    if (message.type === "funding-projection-cancel") {
+      projectionRequests.get(key)?.controller.abort();
+      projectionRequests.delete(key);
+      return { ok: true };
+    }
+    const entry = { controller: new AbortController(), tabId: sender.tab.id };
+    projectionRequests.get(key)?.controller.abort();
+    projectionRequests.set(key, entry);
+    try {
+      return await queryProjection(message.exchange, message.symbol, {
+        signal: entry.controller.signal,
+        onProgress: progress => {
+          if (!entry.controller.signal.aborted) chrome.tabs.sendMessage(sender.tab.id,
+            { type: "funding-projection-progress", requestId, progress }, { frameId: 0 }).catch(() => {});
+        }
+      });
+    } finally { if (projectionRequests.get(key) === entry) projectionRequests.delete(key); }
   })().then(sendResponse, () => sendResponse({ ok: false, error: "无法查询，请刷新看板或重新保存插件设置" }));
   return true;
 });
