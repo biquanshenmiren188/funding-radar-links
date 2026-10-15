@@ -2,13 +2,17 @@
    No credentials leave the page; only three allowlisted, read-only endpoint shapes are used. */
 async function readAstroRiskSnapshot(expectedOrigin) {
   if (location.origin !== expectedOrigin) throw new Error("看板地址已改变，请重新打开插件");
+  // Build/export pairs are verified against the dashboard's own GET calls.
+  // Minified export names can change independently of the response schema.
+  const clients = { "index-CW16nN3e.js": "cD", "index-UbpzoVda.js": "cE" };
   const entry = [...document.querySelectorAll('script[type="module"][src]')]
     .map(el => new URL(el.src, location.href))
-    .find(url => url.origin === expectedOrigin && /\/assets\/index-CW16nN3e\.js$/.test(url.pathname));
+    .find(url => url.origin === expectedOrigin && /\/assets\/index-[\w-]+\.js$/.test(url.pathname) &&
+      Object.hasOwn(clients, url.pathname.split("/").pop()));
   if (!entry) throw new Error("当前软件版本尚未适配账户读取，请保持交易看板页面打开");
   // This export was verified against the running build. Fail closed after a build change.
   const module = await import(entry.href);
-  const client = module.cD;
+  const client = module[clients[entry.pathname.split("/").pop()]];
   if (!client || typeof client.get !== "function") throw new Error("软件只读接口版本不匹配");
   const read = async path => {
     const response = await client.get(path, { timeout: 10000 });
