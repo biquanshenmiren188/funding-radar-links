@@ -114,7 +114,7 @@
     async function json(url, body) {
       const requestKey = url + (body ? "#" + JSON.stringify(body) : "");
       const old = requests.get(requestKey);
-      if (old && clock() - old.at < 15000) return old.promise;
+      if (old && clock() - old.at < 9000) return old.promise;
       const host = new URL(url).host;
       const previous = lanes.get(host) || Promise.resolve();
       const promise = previous.catch(() => {}).then(async () => {
@@ -272,7 +272,7 @@
       coin = coin.toUpperCase();
       const key = exchange + ":" + coin;
       const old = cache.get(key);
-      if (old && clock() - old.checkedAt < (old.ok ? 15000 : 5000) && (!old.end || clock() < old.end)) return old;
+      if (old && clock() - old.checkedAt < (old.ok ? 9000 : 5000) && (!old.end || clock() < old.end)) return old;
       if (flights.has(key)) return flights.get(key);
       const task = (async () => {
         try {

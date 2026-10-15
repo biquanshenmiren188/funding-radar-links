@@ -7,9 +7,27 @@
     const rounded = Number((value * 100).toFixed(3));
     return `${rounded < 0 ? "-" : "+"}${Math.abs(rounded).toFixed(3)}`;
   }
+  // Per-market overrides ensure a stopped card stays stopped even in automatic scopes.
+  function createPolling(now = Date.now) {
+    const overrides = new Map(), due = new Map(), revisions = new Map();
+    let config = { startMode: "manual", interval: 30, coins: [] };
+    const active = (k, symbol) => overrides.has(k) ? overrides.get(k)
+      : config.startMode === "all" || (config.startMode === "selected" && config.coins.includes(symbol.toUpperCase()));
+    return {
+      active,
+      toggle(k, symbol) { overrides.set(k, !active(k, symbol)); due.delete(k); revisions.set(k, (revisions.get(k) || 0) + 1); },
+      revision: k => revisions.get(k) || 0,
+      ready: (k, symbol) => active(k, symbol) && now() >= (due.get(k) || 0),
+      dueAt: k => due.get(k) || 0,
+      requested(k) { due.set(k, now() + config.interval * 1000); },
+      configure(next) { config = next; due.clear(); },
+      clear() { overrides.clear(); due.clear(); revisions.clear(); }
+    };
+  }
   function create({ linking, limits, send = m => chrome.runtime.sendMessage(m), now = Date.now }) {
     const results = new Map(), pending = new Map();
-    let settings = limits.settings(), timer, expiryTimer, stopped = false, generation = 0;
+    const polling = createPolling(now);
+    let settings = limits.fundingSettings(), timer, expiryTimer, stopped = false;
     function cards() { return [...document.querySelectorAll(".ant-card")]; }
     function key(d, i) { return d.exchanges[i] + ":" + d.symbol.toUpperCase(); }
     function fresh(r) { return r?.ok && now() - r.checkedAt < 120000 && now() < r.end; }
@@ -40,12 +58,13 @@
           const value = document.createElement("span"); value.className = "funding-radar-projection-index";
           const button = document.createElement("button"); button.type = "button"; button.textContent = "算";
           button.className = "funding-radar-projection-button";
+          const result = document.createElement("span"); result.className = "funding-radar-projection-result";
           button.addEventListener("click", e => {
             e.stopPropagation(); e.preventDefault();
             const current = linking.readCard(card); if (!current || current.mode[i] !== "F") return;
-            query(current, i); render(card);
+            polling.toggle(key(current, i), current.symbol); renderAll(); tick();
           });
-          leg.append(value, button); view.append(leg);
+          leg.append(value, result, button); view.append(leg);
         }
         source.insertAdjacentElement("afterend", view);
       }
@@ -54,55 +73,53 @@
       [...view.querySelectorAll(".funding-radar-projection-leg")].forEach((leg, i) => {
         text(leg.querySelector(".funding-radar-projection-index"), values[i]);
         const button = leg.querySelector("button");
-        leg.querySelector(".funding-radar-projection-result")?.remove();
+        const output = leg.querySelector(".funding-radar-projection-result");
         const r = results.get(key(d, i)), busy = pending.has(key(d, i));
-        button.hidden = d.mode[i] !== "F"; button.disabled = busy;
-        button.setAttribute("aria-label", `算 ${d.exchanges[i]} ${d.symbol} ${i === 0 ? "左" : "右"}合约结算费率`);
-        button.title = describe(r, d, i);
+        const running = polling.active(key(d, i), d.symbol);
+        button.hidden = d.mode[i] !== "F"; button.disabled = false;
+        button.setAttribute("aria-label", `${running ? "停" : "算"} ${d.exchanges[i]} ${d.symbol} ${i === 0 ? "左" : "右"}合约结算费率`);
+        button.setAttribute("aria-pressed", String(running));
+        button.title = (running ? `点击停止，每 ${settings.interval} 秒计算一次` : "点击开始自动计算") + (busy ? " · 查询中" : "") + "\n" + describe(r, d, i);
         button.setAttribute("aria-description", button.title);
         button.setAttribute("aria-busy", String(busy));
-        text(button, busy ? "…" : fresh(r) ? compactRate(r.predicted) : "算");
+        text(button, running ? "停" : "算");
+        output.hidden = d.mode[i] !== "F" || !fresh(r);
+        text(output, fresh(r) ? compactRate(r.predicted) : "");
+        output.title = describe(r, d, i);
       });
       card.querySelector(".funding-radar-projection-detail")?.remove();
     }
     function renderAll() { if (!stopped) cards().forEach(render); }
     async function query(d, i) {
       const k = key(d, i); if (pending.has(k) || stopped || d.mode[i] !== "F") return;
+      const revision = polling.revision(k);
+      polling.requested(k);
       const task = Promise.resolve().then(() => send({ type: "funding-projection", exchange: d.exchanges[i], symbol: d.symbol }));
       pending.set(k, task); renderAll();
-      try { results.set(k, await task); }
-      catch (_) { results.set(k, { ok: false, error: "查询失败，请刷新看板后重试" }); }
+      try { const result = await task; if (!stopped && revision === polling.revision(k)) results.set(k, result); }
+      catch (_) { if (!stopped && revision === polling.revision(k)) results.set(k, { ok: false, error: "查询失败，下次自动重试" }); }
       finally { pending.delete(k); if (!stopped) renderAll(); }
     }
-    function schedule(immediate = false) {
-      clearTimeout(timer);
-      const token = ++generation;
-      if (stopped || !settings.enabled || document.hidden || (settings.mode !== "all" && !settings.coins.length)) return;
-      timer = setTimeout(async () => {
-        const tasks = new Map();
-        cards().forEach(card => {
-          const d = linking.readCard(card); if (!d || (settings.mode !== "all" && !settings.coins.includes(d.symbol.toUpperCase()))) return;
-          for (let i = 0; i < 2; i++) if (d.mode[i] === "F") tasks.set(key(d, i), [d, i]);
-        });
-        // Bound concurrent card work; the worker additionally serializes requests per venue.
-        const queue = [...tasks.values()];
-        await Promise.all([0, 1].map(async () => {
-          while (queue.length && token === generation && !stopped && settings.enabled && !document.hidden) {
-            const [d, i] = queue.shift();
-            if (settings.mode === "all" || settings.coins.includes(d.symbol.toUpperCase())) await query(d, i);
-          }
-        }));
-        if (token === generation) schedule();
-      }, immediate ? 0 : settings.interval * 1000);
+    function tick() {
+      if (stopped || document.hidden) return;
+      const tasks = new Map();
+      cards().forEach(card => {
+        const d = linking.readCard(card); if (!d) return;
+        for (let i = 0; i < 2; i++) if (d.mode[i] === "F") tasks.set(key(d, i), [d, i]);
+      });
+      for (const [k, [d, i]] of [...tasks].sort(([a], [b]) => polling.dueAt(a) - polling.dueAt(b))) {
+        if (pending.size >= 2) break;
+        if (!pending.has(k) && polling.ready(k, d.symbol)) void query(d, i);
+      }
     }
-    return { render, configure(value) { settings = limits.settings(value); schedule(true); },
-      visibilityChanged() { renderAll(); schedule(true); },
-      start(value) { stopped = false; settings = limits.settings(value); renderAll(); schedule(true); expiryTimer = setInterval(renderAll, 5000); },
-      stop() { stopped = true; clearTimeout(timer); clearInterval(expiryTimer); results.clear();
+    return { render, configure(value) { settings = limits.fundingSettings(value); polling.configure(settings); renderAll(); tick(); },
+      visibilityChanged() { renderAll(); tick(); },
+      start(value) { stopped = false; settings = limits.fundingSettings(value); polling.configure(settings); renderAll(); tick(); clearInterval(timer); timer = setInterval(tick, 1000); clearInterval(expiryTimer); expiryTimer = setInterval(renderAll, 5000); },
+      stop() { stopped = true; clearInterval(timer); clearInterval(expiryTimer); results.clear(); polling.clear();
         document.querySelectorAll(".funding-radar-projection, .funding-radar-projection-detail").forEach(el => el.remove());
         document.querySelectorAll(".funding-radar-index-source").forEach(el => el.classList.remove("funding-radar-index-source")); }
     };
   }
-  root.FundingRadarProjectionInline = { create };
+  root.FundingRadarProjectionInline = { create, createPolling, compactRate };
   if (typeof module !== "undefined") module.exports = root.FundingRadarProjectionInline;
 })(globalThis);

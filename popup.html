@@ -19,13 +19,12 @@
       <small>默认使用当前 IP 地址；扩展会在该地址下打开 /radar/。</small>
       <fieldset>
         <legend>合约费率估算 · 算</legend>
-        <label class="toggle"><input id="funding-auto" type="checkbox"> 开启自动查询</label>
         <label for="funding-interval">查询间隔</label>
-        <select id="funding-interval"><option value="30">30 秒</option><option value="60" selected>1 分钟</option><option value="120">2 分钟</option><option value="300">5 分钟</option></select>
-        <label for="funding-scope">查询范围</label>
-        <select id="funding-scope"><option value="all">全部卡片币种</option><option value="selected" selected>指定币种</option></select>
+        <select id="funding-interval"><option value="10">10 秒</option><option value="30" selected>30 秒</option><option value="60">1 分钟</option><option value="300">5 分钟</option></select>
+        <label for="funding-scope">启动方式</label>
+        <select id="funding-scope"><option value="manual" selected>点击卡片「算」启动</option><option value="selected">指定币种自动启动</option><option value="all">全部卡片自动启动</option></select>
         <div id="funding-coins-group"><label for="funding-coins">自动计算币种</label><textarea id="funding-coins" rows="2" maxlength="6000" placeholder="BLUR, BTC, ETH"></textarea></div>
-        <small>仅计算当前卡片中的合约腿，现货不显示「算」。同币种、同交易所共用结果；后台标签页暂停。手动「算」始终可用。</small>
+        <small>点击「算」立即计算并定时刷新，变成红色「停」，再次点击停止。仅合约显示；同交易所、同币种共用开停状态与结果。后台标签页暂停，返回后补查到期项目。</small>
         <small>小框数值按百分比显示三位小数，省略 %。悬停查看采样区间与口径；HL 使用官方预估。均非最终结算值。</small>
       </fieldset>
       <fieldset>
