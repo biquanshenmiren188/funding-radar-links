@@ -1,6 +1,10 @@
 (function (root) {
   "use strict";
   const MINUTE = 60000;
+  // OKX publishes one sample per minute with a seconds component in ts.
+  // Lookup uses the same minute buckets as weightedHistory; retain raw timestamps
+  // for freshness, pagination and conflicting-sample validation.
+  const minuteBucket = t => Math.floor(t / MINUTE) * MINUTE;
   const EXCHANGES = ["binance", "aster", "bybit", "bitget", "gate", "okx", "hyperliquid"];
   const UNVERIFIED = Object.freeze({});
   // 0.005 percentage points, exclusively the historical sampling uncertainty.
@@ -95,14 +99,15 @@
     if (!rows.length) throw new Error("最新溢价尚未更新，稍后重试");
     const maxLag = config.maxHistoryLagMinutes || 0;
     if (maxLag) {
-      const indexed = new Map(rows.map(r => [r.t, r]));
+      const indexed = new Map(rows.map(r => [minuteBucket(r.t), r]));
       const expected = elapsed;
       while (elapsed > 0) {
         const r = indexed.get(start + (elapsed - 1 + (config.sampleOffset || 0)) * MINUTE);
         if (r && (r.count === undefined || r.count === samples)) break;
         elapsed--;
       }
-      if (!elapsed || expected - elapsed > maxLag) throw new Error(`官方完整历史延迟超过 ${maxLag} 分钟，等待更新后自动重试`);
+      if (!elapsed) throw new Error(`本周期已开始 ${expected} 分钟，尚无可用完整分钟，等待官方补齐后自动重试`);
+      if (expected - elapsed > maxLag) throw new Error(`官方完整历史延迟超过 ${maxLag} 分钟，等待更新后自动重试`);
     }
     const dataAsOf = start + elapsed * MINUTE;
     const historyLagMinutes = Math.max(0, (expectedAsOf - dataAsOf) / MINUTE);
@@ -327,7 +332,7 @@
           if (!Array.isArray(part) || !part.length) break;
           rows.push(...part.map(r => ({ t: number(r.ts), p: number(r.premium), close: number(r.premium) })));
           const oldest = Math.min(...part.map(r => number(r.ts)));
-          if (oldest <= start || String(oldest) === cursor) break;
+          if (minuteBucket(oldest) <= start || String(oldest) === cursor) break;
           cursor = String(oldest);
         }
         return rows;
@@ -371,10 +376,11 @@
             (!config.bounded || ([r.low, r.high].every(Number.isFinite) && r.low <= r.p && r.p <= r.high && r.low <= r.close && r.close <= r.high));
           function gaps(overlap) {
             const count = Math.max(0, Math.floor((Math.floor(config.serverTime / MINUTE) * MINUTE - (config.forecastLagMinutes || 0) * MINUTE - config.start) / MINUTE));
+            const byMinute = new Map([...merged.values()].map(r => [minuteBucket(r.t), r]));
             const wanted = [];
             for (let i = 0; i < count; i++) {
               const t = config.start + (i + (config.sampleOffset || 0)) * MINUTE;
-              if (!complete(merged.get(t)) || (overlap && i >= count - 3)) wanted.push(t);
+              if (!complete(byMinute.get(t)) || (overlap && i >= count - 3)) wanted.push(t);
             }
             const ranges = [];
             for (const t of wanted) {

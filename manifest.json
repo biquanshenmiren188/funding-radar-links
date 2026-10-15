@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Funding Radar Links",
-  "version": "1.8.7",
+  "version": "1.8.8",
   "description": "卡片探入口、合约结算费率估算与公共限仓查询，支持自动查询和指定币种。",
   "action": {
     "default_title": "Funding Radar Links",
