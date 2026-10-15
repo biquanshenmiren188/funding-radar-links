@@ -62,7 +62,10 @@
           button.addEventListener("click", e => {
             e.stopPropagation(); e.preventDefault();
             const current = linking.readCard(card); if (!current || current.mode[i] !== "F") return;
-            polling.toggle(key(current, i), current.symbol); renderAll(); tick();
+            const k = key(current, i);
+            polling.toggle(k, current.symbol);
+            if (!polling.active(k, current.symbol)) results.delete(k);
+            renderAll(); tick();
           });
           leg.append(value, result, button); view.append(leg);
         }
@@ -83,8 +86,8 @@
         button.setAttribute("aria-description", button.title);
         button.setAttribute("aria-busy", String(busy));
         text(button, running ? "停" : "算");
-        output.hidden = d.mode[i] !== "F" || !fresh(r);
-        text(output, fresh(r) ? compactRate(r.predicted) : "");
+        output.hidden = d.mode[i] !== "F" || !running || !fresh(r);
+        text(output, running && fresh(r) ? compactRate(r.predicted) : "");
         output.title = describe(r, d, i);
       });
       card.querySelector(".funding-radar-projection-detail")?.remove();
