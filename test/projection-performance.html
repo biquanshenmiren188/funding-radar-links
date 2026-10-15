@@ -1,0 +1,74 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>插件性能回归验收</title>
+<link rel="stylesheet" href="../content.css"><style>body{font:16px system-ui;color:#334155;background:#f5f7fa;padding:20px}#cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}.ant-card{background:white;border:1px solid #ddd;padding:12px;border-radius:8px}.pair-name-link{font-weight:bold}.ant-tag-gold{color:#946600}button{font:inherit;padding:8px}#report{white-space:pre-wrap;background:white;padding:15px}p{margin:10px 0}</style>
+<h1>插件性能回归验收</h1><p>21 张虚拟卡片、42 个合约。仅模拟响应，不访问账户及交易接口。</p>
+<button id="run">运行对比验收</button><pre id="report">等待运行</pre><div id="cards"></div>
+<script>
+const baseline=new URLSearchParams(location.search).get('baseline')==='1';
+const stats={reads:0,borrowReads:0,limitReads:0,queries:0,writes:0},intervals=new Map(),listeners=[];
+let timerId=0;
+const realNow=Date.now;let clockOffset=0;Date.now=()=>realNow()+clockOffset;
+window.setInterval=(fn,ms)=>{intervals.set(++timerId,{fn,ms});return timerId};
+window.clearInterval=id=>intervals.delete(id);
+for(let i=0;i<21;i++){
+ const c=document.createElement('div');c.className='ant-card';
+ c.innerHTML=`<div class="ant-card-head"><span class="pair-name-link">DEMO${i}</span></div><p>交易所: <span class="ant-tag ant-tag-gold">binance</span> <span class="ant-tag ant-tag-gold">okx</span></p><p>仓位数量: 0 / 0</p><p>实时指数: <span>-1.2345 | -2.3456</span></p>`;
+ document.getElementById('cards').append(c);
+}
+window.chrome={storage:{local:{get:async()=>({siteOrigin:location.origin})},onChanged:{addListener:fn=>listeners.push(fn),removeListener(){}}},runtime:{sendMessage:async m=>{
+ if(m.type!=='funding-projection')return {ok:false};
+ stats.queries++;
+ return {ok:true,predicted:-.00123,checkedAt:Date.now(),end:Date.now()+3600000,hours:4,currentPremium:-.003,average:-.003,officialRate:-.001,observedMinutes:120,totalMinutes:240,method:'模拟',assumption:'验收'};
+}}};
+new MutationObserver(records=>{stats.writes+=records.filter(r=>r.target.nodeType===1&&r.target.closest('.funding-radar-projection')).length}).observe(document.getElementById('cards'),{attributes:true,childList:true,characterData:true,subtree:true});
+const frames=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+const settled=async check=>{for(let i=0;i<10;i++){await frames();if(check())return}throw new Error('UI did not settle')};
+const snapshot=()=>({...stats});
+const delta=a=>Object.fromEntries(Object.keys(stats).map(k=>[k,stats[k]-a[k]]));
+document.getElementById('run').onclick=async()=>{
+ document.getElementById('run').disabled=true;
+ try{
+  const result={baseline};
+  const start=snapshot(),t=performance.now();
+  listeners.forEach(fn=>fn({fundingAutoQuery:{newValue:{startMode:'all',interval:300}}},'local'));
+  for(let i=0;i<24;i++){[...intervals.values()].filter(t=>t.ms===1000).forEach(t=>t.fn());await new Promise(r=>setTimeout(r,0));}
+  await frames();result.startAll={...delta(start),ms:performance.now()-t};
+  const idle=snapshot(),ti=performance.now();
+  for(let i=0;i<60;i++)for(const timer of intervals.values())if(timer.ms===1000||(timer.ms===5000&&i%5===0))timer.fn();
+  await frames();result.idle60Ticks={...delta(idle),ms:performance.now()-ti};
+  const updates=snapshot(),tu=performance.now();
+  for(let i=0;i<10;i++){
+   document.querySelectorAll('.funding-radar-index-source').forEach(el=>el.textContent=`-${i}.1234 | -${i}.4567`);
+   await frames();
+  }
+  result.price10Rounds={...delta(updates),ms:performance.now()-tu};
+  const stop=snapshot();document.querySelector('.funding-radar-projection-button').click();await frames();
+  result.stop={...delta(stop),hidden:document.querySelector('.funding-radar-projection-result').hidden,button:document.querySelector('.funding-radar-projection-button').textContent};
+  result.indicesCurrent=[...document.querySelectorAll('.funding-radar-projection-index')].every(el=>['-9.1234','-9.4567'].includes(el.textContent));
+  if(!baseline){
+   const original=document.querySelectorAll('.ant-card')[1],duplicate=original.cloneNode(true);
+   duplicate.querySelectorAll('.funding-radar-projection,.funding-radar-link').forEach(el=>el.remove());
+   document.getElementById('cards').append(duplicate);await settled(()=>duplicate.querySelector('.funding-radar-projection-result'));
+   const duplicateShared=!duplicate.querySelector('.funding-radar-projection-result').hidden;
+   duplicate.querySelector('.funding-radar-projection-button').click();await frames();
+   const duplicateStopped=[original,duplicate].every(c=>c.querySelector('.funding-radar-projection-result').hidden&&c.querySelector('.funding-radar-projection-button').textContent==='算');
+   const row=original.querySelector('.funding-radar-index-source').parentElement;
+   row.innerHTML='实时指数: <span>-3.1111 | -4.2222</span>';await frames();
+   const replacedRow=[...row.querySelectorAll('.funding-radar-projection-index')].map(el=>el.textContent).join('|')==='-3.1111|-4.2222';
+   original.querySelector('.pair-name-link').textContent='CHANGED';await frames();
+   const changedIdentity=[...original.querySelectorAll('.funding-radar-projection-result')].every(el=>el.hidden)&&original.querySelector('button').getAttribute('aria-label').includes('CHANGED');
+   clockOffset=121000;
+   [...intervals.values()].filter(t=>t.ms===5000).forEach(t=>t.fn());await frames();
+   const expiredHidden=[...document.querySelectorAll('.funding-radar-projection-result')].every(el=>el.hidden);
+   clockOffset=0;
+   result.lifecycle={duplicateShared,duplicateStopped,replacedRow,changedIdentity,expiredHidden};
+  }
+  document.getElementById('report').textContent=JSON.stringify(result,null,2);
+ }catch(e){document.getElementById('report').textContent=e.stack;}
+};
+</script>
+<script src="../linking.js"></script><script src="../limits.js"></script><script src="../alerts.js"></script><script src="../risk-inline.js"></script>
+<script>
+for(const [method,counter]of [['readCard','reads'],['readBorrowCard','borrowReads'],['readLimitCard','limitReads']]){const fn=FundingRadarLinking[method];FundingRadarLinking[method]=(...args)=>{stats[counter]++;return fn(...args)}}
+document.write('<script src="'+(baseline?'/__baseline/':'../')+'projection-inline.js"><\/script>');
+document.write('<script src="'+(baseline?'/__baseline/':'../')+'content.js"><\/script>');
+</script></html>
