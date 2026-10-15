@@ -57,7 +57,7 @@
       scheduleAuto();
     }, immediate ? 0 : autoSettings.interval * 1000);
   }
-  function visibilityChanged() { if (document.hidden) notifier.clear(); risk.visibilityChanged(); renderAll(); scheduleAuto(true); }
+  function visibilityChanged() { if (document.hidden) notifier.clear(); risk.visibilityChanged(); projection?.visibilityChanged(); renderAll(); scheduleAuto(true); }
 
   function updateLimit(card, details, anchor) {
     let button = card.querySelector(".funding-radar-limit-button");
@@ -89,7 +89,7 @@
     for (const tag of details.hlTags) {
       let badge = tag.nextElementSibling;
       if (!badge?.classList.contains("funding-radar-limit-status")) badge = null;
-      if (!result || result.state === "unknown") { badge?.remove(); continue; }
+      if (!result || result.state === "unknown" || (result.checkedAt && Date.now() - result.checkedAt >= limits.FRESH_MS)) { badge?.remove(); continue; }
       if (!badge) {
         badge = document.createElement("span");
         badge.className = "funding-radar-limit-status";
@@ -97,13 +97,12 @@
         badge.setAttribute("aria-live", "polite");
         tag.insertAdjacentElement("afterend", badge);
       }
-      const stale = result.checkedAt && Date.now() - result.checkedAt >= limits.FRESH_MS;
-      const state = stale ? "stale" : result.state;
-      const label = { open: "可", restricted: "限", loading: "查询中", stale: "待查" }[state];
+      const state = result.state;
+      const label = { open: "可", restricted: "限", loading: "查询中" }[state];
       if (badge.textContent !== label) badge.textContent = label;
       badge.dataset.state = state;
       const time = result.checkedAt ? new Date(result.checkedAt).toLocaleTimeString("zh-CN", { hour12: false }) : "";
-      badge.title = stale ? `${time} 的结果已过期，请重新查询` : `${result.reason}${time ? " · 查询 " + time : ""}`;
+      badge.title = `${result.reason}${time ? " · 查询 " + time : ""}`;
       badge.setAttribute("aria-label", `${details.symbol} ${label}：${badge.title}`);
     }
   }
@@ -114,9 +113,11 @@
   let storageListener;
 
   const risk = globalThis.FundingRadarInlineRisk.create({ linking });
+  const projection = globalThis.FundingRadarProjectionInline?.create({ linking, limits });
   function updateBorrow(card) { risk.render(card); }
 
   function updateCard(card) {
+    projection?.render(card);
     const details = linking.readCard(card);
     const limitDetails = linking.readLimitCard(card);
     const borrowDetails = linking.readBorrowCard(card);
@@ -173,9 +174,9 @@
     if (!node) return;
     if (node.nodeType !== Node.ELEMENT_NODE) return;
     // Price/position text changes do not change the destination. Observe only card identity changes.
-    if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice, .funding-radar-risk, .funding-radar-risk-detail")) return;
+    if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice, .funding-radar-risk, .funding-radar-risk-detail, .funding-radar-projection, .funding-radar-projection-detail")) return;
     const row = node.closest("p");
-    if (row && !/^(交易所|仓位数量)\s*[:：]/.test(row.textContent.trim()) && !row.classList.contains("mmr-row")) return;
+    if (row && !/^(交易所|仓位数量|实时指数)\s*[:：]/.test(row.textContent.trim()) && !row.classList.contains("mmr-row")) return;
     if (node.matches(".ant-card")) queue(node);
     else {
       const card = node.closest(".ant-card");
@@ -187,6 +188,7 @@
   function stop() {
     stopped = true;
     risk.stop();
+    projection?.stop();
     notifier.clear();
     clearTimeout(autoTimer);
     expiries.forEach(timer => clearTimeout(timer));
@@ -201,7 +203,7 @@
     globalThis.__fundingRadarLinksStarted = false;
   }
 
-  chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert", "hlReleaseCoins"]).then(({ siteOrigin, radarOrigin: savedRadarOrigin, hlAutoQuery, hlReleaseAlert, hlReleaseCoins }) => {
+  chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert", "hlReleaseCoins", "fundingAutoQuery"]).then(({ siteOrigin, radarOrigin: savedRadarOrigin, hlAutoQuery, hlReleaseAlert, hlReleaseCoins, fundingAutoQuery }) => {
     if (location.origin !== siteOrigin) {
       stop();
       return;
@@ -212,6 +214,7 @@
     document.addEventListener("visibilitychange", visibilityChanged);
     scheduleAuto(true);
     risk.start();
+    projection?.start(fundingAutoQuery);
     radarOrigin = savedRadarOrigin || linking.DEFAULT_RADAR_ORIGIN;
     document.querySelectorAll(".ant-card").forEach(queue);
     observer = new MutationObserver(records => {
@@ -229,6 +232,7 @@
       }
       if (changes.hlReleaseCoins) { releaseCoins = limits.parseCoins(changes.hlReleaseCoins.newValue); notifier.clear(); }
       if (changes.hlReleaseAlert) { releaseAlert = changes.hlReleaseAlert.newValue !== false; if (!releaseAlert) notifier.clear(); }
+      if (changes.fundingAutoQuery) projection?.configure(changes.fundingAutoQuery.newValue);
       if (changes.hlAutoQuery) { autoSettings = limits.settings(changes.hlAutoQuery.newValue); scheduleAuto(true); }
       if (changes.radarOrigin) {
         radarOrigin = changes.radarOrigin.newValue || linking.DEFAULT_RADAR_ORIGIN;

@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>合约费率估算 · 验收</title>
+<link rel="stylesheet" href="../content.css"><style>body{font:16px system-ui;background:#f3f6f8;color:#465767;padding:20px}.cards{display:flex;gap:16px;flex-wrap:wrap}.ant-card{width:480px;max-width:100%;background:white;border:1px solid #ddd;border-radius:10px}.ant-card-head{padding:12px;border-bottom:1px solid #eee}.ant-card-body{padding:12px}.pair-name-link{font-weight:700;color:#162c35}.ant-tag{padding:2px 6px;border-radius:4px}.ant-tag-gold{background:#fff8e5;color:#ba8900}.ant-tag-green{background:#f0ffe7;color:#509800}.controls{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}button,select,input{font:inherit}button{cursor:pointer}#calls{white-space:pre-line;font-size:12px}p{margin:8px 0}</style>
+<h2>合约费率估算验收</h2><p>虚拟卡片。默认测试结果；勾选「真实公开接口」后重新点「算」。</p>
+<div class="controls"><label><input id="real" type="checkbox">真实公开接口</label><label><input id="auto" type="checkbox">自动查询</label><select id="scope"><option value="selected">指定币种</option><option value="all">全部卡片币种</option></select><input id="coins" value="BLUR" aria-label="指定币种"><button id="save">应用设置</button><button id="change">更新实时指数</button><button id="expire">让估算过期</button><button id="fail">切换请求失败</button></div>
+<div class="cards" id="cards"></div><pre id="calls"></pre>
+<script>
+const cases=[['BLUR','gate','okx','FF'],['BTC','gate','binance','SF'],['ETH','bybit','gate','FS'],['BLUR','hl','okx','FF'],['COOL','gate','binance','FF'],['BLUR','binance','aster','FF'],['BLUR','bitget','bybit','FF']];
+for(const [symbol,left,right,mode] of cases){const c=document.createElement('div');c.className='ant-card';c.innerHTML=`<div class="ant-card-head"><span class="pair-name-link">${symbol}</span></div><div class="ant-card-body"><p>交易所: <span class="ant-tag ant-tag-${mode[0]==='F'?'gold':'green'}">${left}</span> <span class="ant-tag ant-tag-${mode[1]==='F'?'gold':'green'}">${right}</span></p><p>仓位数量: 0 / 0</p><p>实时指数: <span>-3.2621  |  -3.5047</span></p><p>实时费率: -0.354/1h / -1/4h</p></div>`;document.getElementById('cards').append(c)}
+const handlers=[];let expired=false,failed=false;const calls=[];
+window.chrome={storage:{local:{get:async()=>({siteOrigin:location.origin})},onChanged:{addListener:fn=>handlers.push(fn),removeListener(){}}},runtime:{sendMessage:async m=>{
+ if(m.type==='read-frontend-risk')return {ok:false};
+ if(m.type==='hl-limit-query')return {state:'open',checkedAt:Date.now()-31000,reason:'验收过期结果'};
+ calls.push(m.exchange+':'+m.symbol);document.getElementById('calls').textContent='查询 '+calls.length+' 次\n'+calls.join('\n');
+ if(failed)return {ok:false,error:'模拟网络失败，请稍后重试'};
+ if(document.getElementById('real').checked)return fetch('/__projection?'+new URLSearchParams({exchange:m.exchange,symbol:m.symbol})).then(r=>r.json());
+ return {ok:true,checkedAt:Date.now()-(expired?130000:0),end:Math.floor(Date.now()/3600000+1)*3600000,hours:4,floor:-.02,cap:.02,predicted:-.01234,officialRate:-.01,currentPremium:-.0326,average:-.02518,observedMinutes:120,totalMinutes:240,method:'验收模拟分钟数据',assumption:'当前溢价保持至结算的估算'};
+}}};
+document.getElementById('save').onclick=()=>{const value={enabled:document.getElementById('auto').checked,mode:document.getElementById('scope').value,coins:document.getElementById('coins').value,interval:30};handlers.forEach(fn=>fn({fundingAutoQuery:{newValue:value}},'local'))};
+document.getElementById('change').onclick=()=>document.querySelectorAll('.funding-radar-index-source').forEach(el=>el.textContent='-1.2345 | 0.9876');
+document.getElementById('expire').onclick=()=>expired=true;
+document.getElementById('fail').onclick=()=>failed=!failed;
+</script><script src="../linking.js"></script><script src="../limits.js"></script><script src="../alerts.js"></script><script src="../risk-inline.js"></script><script src="../projection-inline.js"></script><script src="../content.js"></script></html>

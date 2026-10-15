@@ -9,7 +9,7 @@
 <body>
   <main>
     <h1>套利雷达链接</h1>
-    <p>在套利卡片的标的旁添加“雷达”入口。</p>
+    <p>在套利卡片的标的旁添加“探”入口。</p>
     <form id="settings">
       <label for="site-url">套利看板地址</label>
       <input id="site-url" type="url" placeholder="https://dashboard.example.com" autocomplete="url" required>
@@ -17,6 +17,17 @@
       <label for="radar-url">Radar 站点地址</label>
       <input id="radar-url" type="url" placeholder="https://47.79.37.237" autocomplete="url" required>
       <small>默认使用当前 IP 地址；扩展会在该地址下打开 /radar/。</small>
+      <fieldset>
+        <legend>合约费率估算 · 算</legend>
+        <label class="toggle"><input id="funding-auto" type="checkbox"> 开启自动查询</label>
+        <label for="funding-interval">查询间隔</label>
+        <select id="funding-interval"><option value="30">30 秒</option><option value="60" selected>1 分钟</option><option value="120">2 分钟</option><option value="300">5 分钟</option></select>
+        <label for="funding-scope">查询范围</label>
+        <select id="funding-scope"><option value="all">全部卡片币种</option><option value="selected" selected>指定币种</option></select>
+        <div id="funding-coins-group"><label for="funding-coins">自动计算币种</label><textarea id="funding-coins" rows="2" maxlength="6000" placeholder="BLUR, BTC, ETH"></textarea></div>
+        <small>仅计算当前卡片中的合约腿，现货不显示「算」。同币种、同交易所共用结果；后台标签页暂停。手动「算」始终可用。</small>
+        <small>估算下一次结算，假设最新溢价维持到结算。采样误差较大时显示区间；HL 显示官方预估（官）。均非最终结算值。</small>
+      </fieldset>
       <fieldset>
         <legend>Hyperliquid 限额查询</legend>
         <label class="toggle"><input id="hl-auto" type="checkbox"> 开启自动查询</label>
@@ -29,7 +40,7 @@
           <textarea id="hl-coins" rows="2" maxlength="6000" placeholder="W, BTC, ETH"></textarea>
         </div>
         <small>仅查询当前卡片中的 HL 永续币种。同币种去重；后台标签页暂停。手动「查」始终可用。</small>
-        <small>「可」表示未触及 HL 公共持仓上限，「限」表示受限。结果 30 秒后显示「待查」。</small>
+        <small>「可」表示未触及 HL 公共持仓上限，「限」表示受限。结果 30 秒后自动隐藏。</small>
       </fieldset>
       <fieldset>
         <legend>限制解除提醒</legend>

@@ -1,0 +1,91 @@
+{
+  "auditedOn": "2026-10-15",
+  "releaseReady": false,
+  "implementationReady": true,
+  "deploymentStatus": "Installed 1.8.0 in the user-confirmed Profile 7 unpacked directory, backed up 1.7.3, verified file hashes. User reloaded; refreshed real dashboard shows 36 contract-leg buttons and no expired HL pending badges. Manual Binance/Bitget/OKX BLUR, native HL BLUR and Gate ARC returned results. Aster and Bybit ZEREBRO missing-history errors emitted no number; other Bybit/Aster coins returned results in direct production-client checks. Automatic selected-symbol behavior verified on local browser fixture using real APIs; live auto preference remains user-controlled.",
+  "approximationPolicy": {
+    "thresholdPercentagePoints": 0.005,
+    "method": "Positive-weight samples are enclosed by each minute's low/high. Applying the monotone fee formula gives a conditional historical-sampling envelope. OHLC mean is displayed only when its maximum distance from both bounds is <=0.005pp; otherwise show the range.",
+    "evidence": "43 complete official historical periods across Binance, Bitget and Aster fall within envelopes, covering 1h/4h/8h. Incomplete sample periods were excluded, not interpolated; raw complete fixtures retained.",
+    "limitation": "Not a confidence interval or a bound on future market movement. Missing/stale data still fails after retry."
+  },
+  "scope": "Next-settlement scenario for ordinary USDT linear perpetuals, holding the latest official premium constant for the unobserved remainder. Not a guaranteed future funding rate, not a conversion of the dashboard index label.",
+  "units": "All formula values are decimal fractions. Percentage points in audit reports multiply fractions by 100.",
+  "commonClamp": "clamp(x,lo,hi)=max(lo,min(hi,x)); dampener bounds=-0.0005,+0.0005",
+  "releaseConditions": [
+    "Verify each instrument identity, effective formula version, interest, current interval and caps from official sources.",
+    "Verify exact adapters with historical settlements; incomplete intra-minute streams require the separately validated bounded approximation policy.",
+    "No OHLC mean may stand in for the complete 5-second sample series without an explicitly validated approximation policy.",
+    "Missing, conflicting, stale or unverified input returns no estimate; timeouts and rate limits retry without inventing history.",
+    "Verify live browser behavior and reload the actual installed extension before claiming deployment QA."
+  ],
+  "exchanges": {
+    "gate": {
+      "sources": ["https://www.gate.com/announcements/article/51275", "https://www.gate.com/help/futures/futures-logic/27569", "https://www.gate.com/docs/developers/apiv4/en/futures/"],
+      "effectiveChange": "2026-05-27T08:00:00Z",
+      "sampling": "Official current help specifies one sample per 60 seconds, increasing weights 1..n within the funding period. Previous arithmetic-mean algorithm must not be used.",
+      "formula": "clamp((P+clamp(I8-P,-0.0005,0.0005))/(8/h),floor,cap)",
+      "interest": "I8=base daily interest/3; ordinary crypto daily 0.0003, traditional finance 0",
+      "status": "historical_and_live_verified",
+      "apiNormalization": "Empirically verified adapter: P(t)=premium_index.c(t)*mark_candle.c(t-60s)/index_candle.c(t-60s); minute samples (start,end], weights 1..N. The public API does not document this normalization; it is established by raw-data replay, not a fitted offset. Using the candle at t introduces look-ahead. Funding history execution timestamps occasionally end in 01 seconds: align to the scheduled minute boundary before replay.",
+      "evidence": "29 crypto contracts, 166 completed 1h/4h/8h periods, including 102 holdout periods. All 166 reproduce at Gate's reported 1e-6 decimal-rate precision; maximum unrounded absolute error 0.0000498007373682178 percentage points. Includes high-magnitude negative COOL/BLUR and positive BEN; 10 raw three-stream fixtures retained. Six live accrued-rate checks (COOL, BLUR, BTC, ARC, BEN, RSR) also round to the official rate. Production client subsequently returned verified projections for COOL, BLUR, ARC and BTC.",
+      "runtimeCheck": "Before emitting each forecast, rebuild the accrued-period rate and require agreement within half of a 1e-6 decimal-rate rounding unit with the official current rate. Refresh metadata and all three streams once on mismatch or gaps. Persisting mismatch emits no number. This verifies observed data, not the constant-future-premium assumption.",
+      "browserQA": "Local fixture cards with real public API calls: manual Gate BLUR query succeeded; selected COOL automatic queries refreshed only COOL contract legs; spot legs had no calculator; stale output disappeared and simulated request failure cleared the prior number. This is local development QA, not validation of a reloaded installed extension.",
+      "required": "Complete installed-browser QA for the overall extension release. RWA, pre-market, delisting and inverse contracts remain outside this crypto USDT adapter."
+    },
+    "bybit": {
+      "sources": ["https://www.bybit.com/en/help-center/article/Introduction-to-Funding-Rate", "https://bybit-exchange.github.io/docs/v5/market/premium-index-kline"],
+      "sampling": "Minute samples weighted 1..h*60. Historical non-plateau tests require kline closes stamped (start,end], not [start,end). This boundary is an empirical adapter finding, not an explicit statement in the API documentation.",
+      "formula": "clamp(P+clamp(I-P,-0.0005,0.0005),floor,cap)",
+      "interest": "I=0.0003*h/24; documented examples USDCUSDT and ETHBTCUSDT have I=0. Exceptions and non-crypto products require separate verification.",
+      "status": "sampled_history_verified_not_release_approval",
+      "evidence": "18 periods checked across PUFFER, RSR, XCN, PROMPT, BLUR and BSP, 1h/4h/8h. 16 uncapped periods agree within 1e-8 decimal funding rate; 2 capped PUFFER periods excluded from precision evidence because historical cap snapshots are unavailable. Six non-plateau periods retained as regression fixtures.",
+      "required": "Finish instrument exception coverage and installed-browser QA before release."
+    },
+    "okx": {
+      "sources": ["https://www.okx.com/help/perps-funding-fee-mechanism", "https://www.okx.com/docs-v5/en/#public-data-rest-api-get-premium-history"],
+      "sampling": "Official minute premium history, increasing weights, [prevFundingTime,fundingTime). nextFundingTime is not the current cycle end.",
+      "formula": "clamp((P+clamp(I-P,-0.0005,0.0005))/(8/h),floor,cap)",
+      "interest": "Read interestRate and require formulaType=withRate; current ordinary default 0.0001 before interval normalization.",
+      "status": "sampled_history_verified_not_release_approval",
+      "evidence": "Two BLUR 4h settlements reproduce to floating point precision, retained as fixtures. This does not prove all instruments and all intervals.",
+      "required": "Expand multi-interval and exception coverage and installed-browser QA."
+    },
+    "binance": {
+      "sources": ["https://www.binance.com/en/support/faq/detail/360033525031"],
+      "sampling": "5-second samples. Increasing weights for intervals longer than 1h; arithmetic mean for 1h. Displayed funding uses a rolling previous-h window.",
+      "formula": "clamp((P+clamp(I-P,-0.0005,0.0005))/(8/h),floor,cap)",
+      "interest": "Read instrument interestRate, do not hardcode exceptions.",
+      "status": "bounded_approximation_verified",
+      "evidence": "Minute OHLC mean fails historical reconstruction, including ARC 2026-10-15 08:00 UTC: 0.0134222242% versus official 0.009914%.",
+      "required": "Apply approximationPolicy; do not present the OHLC mean as exact."
+    },
+    "bitget": {
+      "sources": ["https://www.bitget.com/support/articles/12560603817108", "https://www.bitget.com/support/articles/12560603887880"],
+      "effectiveChange": "2026-07-10 deployment, exact time per official rollout",
+      "sampling": "5-second weighted samples and rolling previous-h window after the July update. Previous minute-only/current-cycle-only display method is obsolete.",
+      "formula": "clamp((P+clamp(0.0001-P,-0.0005,0.0005))/(8/h),floor,cap)",
+      "status": "bounded_approximation_verified",
+      "evidence": "BLUR/ARC historical OHLC-proxy reconstruction differs from official settlements. Premium history endpoint requires crypto instruments; do not treat RWA price candles as premium.",
+      "required": "Apply approximationPolicy and verify instrument metadata."
+    },
+    "aster": {
+      "sources": ["https://docs.asterdex.com/trading/perpetuals/fees-and-specs/funding-rate"],
+      "sampling": "5-second samples, increasing weights except arithmetic mean at 1h.",
+      "formula": "clamp((P+clamp(I-P,-0.0005,0.0005))/(8/h),floor,cap)",
+      "interest": "Read official instrument interestRate; published ordinary default 0.0001, BNB exception 0. RWA rules are outside this audit.",
+      "status": "bounded_approximation_verified",
+      "evidence": "BLUR/ARC OHLC-proxy reconstruction does not consistently reproduce settlements; stale or incomplete live premium klines also observed.",
+      "required": "Complete samples and instrument identity verification; no forecast from partial count or stale candle."
+    },
+    "hyperliquid": {
+      "sources": ["https://hyperliquid.gitbook.io/hyperliquid-docs/trading/funding", "https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/info-endpoint/perpetuals"],
+      "sampling": "Native perps: 5-second premium samples, arithmetic mean over the hour.",
+      "formula": "clamp((P+clamp(0.0001-P,-0.0005,0.0005))/8,-0.04,0.04)",
+      "status": "official_prediction_adapter",
+      "evidence": "72 BLUR/BTC/ETH historical premium averages reproduce hourly settlement rates with max error 0.000000005 percentage points. Native predictedFundings/HlPerp supplies already-hourly predictions; no division by 8. Live BLUR UI query succeeded.",
+      "boundary": "Live HlPerp was observed stamping the current hour start as nextFundingTime. Only when exactly current hour start and fundingIntervalHours=1, confirm latest fundingHistory settlement is in that hour, then use the next documented hourly boundary. Arbitrary stale timestamps fail.",
+      "required": "Label as official prediction, not a local constant-future-premium scenario; exclude HIP-3 and delisted native contracts."
+    }
+  }
+}
