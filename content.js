@@ -135,11 +135,12 @@
       link = oldLink || document.createElement("a");
       if (!oldLink) {
         link.className = "funding-radar-link";
-        link.textContent = "雷达↗";
+        link.textContent = "探";
         link.target = "_blank";
         link.rel = "noopener noreferrer";
       }
       link.title = `在资金费雷达查看 ${details.symbol}（${details.mode} · ${details.exchanges.join(" / ")}）`;
+      link.setAttribute("aria-label", `探：${link.title}`);
       if (link.href !== href) link.href = href;
       if (link.previousElementSibling !== details.nameElement || link.parentElement !== details.nameElement.parentElement) {
         details.nameElement.insertAdjacentElement("afterend", link);
