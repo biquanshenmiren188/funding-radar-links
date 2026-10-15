@@ -5,6 +5,7 @@
 
   const linking = globalThis.FundingRadarLinking;
   const pending = new Set();
+  const indexPending = new Set();
   const limits = globalThis.FundingRadarLimits;
   const results = new Map();
   const released = limits.createReleaseTracker();
@@ -158,10 +159,19 @@
 
   function flush() {
     frame = undefined;
+    let count = 0;
     for (const card of pending) {
+      pending.delete(card); indexPending.delete(card);
       if (card.isConnected) updateCard(card);
+      if (++count >= 12) break;
     }
-    pending.clear();
+    for (const card of indexPending) {
+      if (count >= 24) break;
+      indexPending.delete(card);
+      if (card.isConnected) projection?.updateIndex(card);
+      count++;
+    }
+    if (pending.size || indexPending.size) frame = requestAnimationFrame(flush);
   }
 
   function queue(card) {
@@ -177,6 +187,14 @@
     if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice, .funding-radar-risk, .funding-radar-risk-detail, .funding-radar-projection, .funding-radar-projection-detail")) return;
     const row = node.closest("p");
     if (row && !/^(交易所|仓位数量|实时指数)\s*[:：]/.test(row.textContent.trim()) && !row.classList.contains("mmr-row")) return;
+    if (projection && row && /^实时指数\s*[:：]/.test(row.textContent.trim())) {
+      const card = row.closest(".ant-card");
+      if (card && !pending.has(card)) {
+        indexPending.add(card);
+        if (frame === undefined) frame = requestAnimationFrame(flush);
+      }
+      return;
+    }
     if (node.matches(".ant-card")) queue(node);
     else {
       const card = node.closest(".ant-card");
@@ -198,6 +216,7 @@
     if (storageListener) chrome.storage.onChanged.removeListener(storageListener);
     if (frame !== undefined) cancelAnimationFrame(frame);
     pending.clear();
+    indexPending.clear();
     document.querySelectorAll(".funding-radar-link, .funding-radar-limit-status").forEach(link => link.remove());
     document.querySelectorAll(".funding-radar-header").forEach(header => header.classList.remove("funding-radar-header"));
     globalThis.__fundingRadarLinksStarted = false;

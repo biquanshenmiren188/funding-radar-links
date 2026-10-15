@@ -46,3 +46,13 @@ test('compact estimate preserves percentage scale, three decimals and signed zer
   assert.equal(compactRate(.00015), '+0.015');
   assert.equal(compactRate(-.00000001), '+0.000');
 });
+
+test('a slow or failed market waits at least thirty seconds after failure',()=>{
+  let now=100000;const p=createPolling(()=>now);
+  p.configure({startMode:'all',interval:10,coins:[]});p.requested('gate:BLUR');
+  now+=20000;p.failed('gate:BLUR');
+  assert.equal(p.ready('gate:BLUR','BLUR'),false);
+  assert.equal(p.ready('gate:BTC','BTC'),true);
+  now+=29999;assert.equal(p.ready('gate:BLUR','BLUR'),false);
+  now++;assert.equal(p.ready('gate:BLUR','BLUR'),true);
+});

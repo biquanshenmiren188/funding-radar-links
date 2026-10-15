@@ -1,13 +1,13 @@
 const test = require('node:test'), assert = require('node:assert/strict'), vm = require('node:vm'), fs = require('node:fs');
-function harness() {
-  const timers = new Map(), calls = []; let next = 0, now = 100000;
+function harness(responder) {
+  const timers = new Map(), calls = []; let next = 0, now = 100000, reads = 0, scans = 0;
   const cards = [['BLUR', 'FF', ['binance', 'okx']], ['BLUR', 'SF', ['gate', 'okx']], ['BTC', 'FS', ['binance', 'gate']]]
     .map(([symbol, mode, exchanges]) => ({ symbol, mode, exchanges, querySelectorAll: () => [] }));
-  const document = { hidden: false, querySelectorAll: selector => selector === '.ant-card' ? cards : [] };
+  const document = { hidden: false, querySelectorAll: selector => { scans++; return selector === '.ant-card' ? cards : []; } };
   const context = { document, Date, setInterval: (fn, ms) => { timers.set(++next, { fn, ms }); return next; }, clearInterval: n => timers.delete(n) };
   vm.runInNewContext(fs.readFileSync(require.resolve('../projection-inline.js'), 'utf8'), context);
-  const ui = context.FundingRadarProjectionInline.create({ now: () => now, linking: { readCard: c => c }, limits: require('../limits.js'), send: async m => { calls.push(m); return { ok: false, error: 'test' }; } });
-  return { ui, calls, timers, document, async flush() { await new Promise(resolve => setImmediate(resolve)); }, async tick(elapsed = 1000) { now += elapsed; const t = [...timers.values()].find(t => t.ms === 1000); assert.ok(t); t.fn(); await this.flush(); } };
+  const ui = context.FundingRadarProjectionInline.create({ now: () => now, linking: { readCard: c => { reads++; return c; } }, limits: require('../limits.js'), send: async m => { calls.push(m); return responder ? responder(m) : { ok: false, error: 'test' }; } });
+  return { ui, calls, timers, document, cards, counts:()=>({reads,scans}), async flush() { await new Promise(resolve => setImmediate(resolve)); }, async tick(elapsed = 1000) { now += elapsed; const t = [...timers.values()].find(t => t.ms === 1000); assert.ok(t); t.fn(); await this.flush(); } };
 }
 test('selected symbols query only future legs and deduplicate exchange-symbol pairs', async () => {
   const h = harness(); h.ui.start({ startMode: 'selected', coins: 'BLUR' }); await h.flush();
@@ -24,4 +24,56 @@ test('defaults and empty specified list never silently enable broad polling', as
   for (const config of [undefined, { startMode: 'selected', coins: '' }]) {
     const h = harness(); h.ui.start(config); await h.tick(30000); assert.equal(h.calls.length, 0); h.ui.stop(); assert.equal(h.timers.size, 0);
   }
+});
+
+test('steady polling and result updates never rescan or reparse the dashboard', async () => {
+  const h = harness(); h.ui.start({ startMode: 'all', interval: 300 }); await h.flush();
+  const initial = h.counts();
+  for (let i=0;i<60;i++) await h.tick();
+  [...h.timers.values()].find(t=>t.ms===5000).fn();
+  assert.deepEqual(h.counts(), initial);
+  assert.equal(h.calls.length, 3);
+  h.ui.stop();
+});
+
+test('removed cards stop requesting; changed identities and added cards are registered', async () => {
+  const h = harness(); h.ui.start({ startMode: 'all', interval: 10 }); await h.flush(); await h.tick();
+  h.cards[0].isConnected=false; h.cards[1].isConnected=false;
+  h.cards[2].symbol='ETH'; h.ui.render(h.cards[2]);
+  const added={symbol:'NEW',mode:'SF',exchanges:['gate','okx'],querySelectorAll:()=>[]};
+  h.cards.push(added);h.ui.render(added);
+  const n=h.calls.length;await h.tick(10000);
+  assert.deepEqual(h.calls.slice(n).map(m=>m.exchange+':'+m.symbol).sort(), ['binance:ETH','okx:NEW']);
+  h.ui.stop();
+});
+
+test('a slow exchange cannot monopolize slots and completed slots immediately serve queued markets', async () => {
+  const waiting = new Map();
+  const h = harness(m => new Promise(resolve => waiting.set(m.exchange+':'+m.symbol, resolve)));
+  for (const exchange of ['gate','bitget','bybit']) h.cards.push({symbol:'NEW',mode:'SF',exchanges:['gate',exchange],querySelectorAll:()=>[]});
+  h.ui.start({startMode:'all',interval:30}); await h.flush();
+  assert.equal(waiting.size,4);
+  assert.equal(new Set(h.calls.map(m=>m.exchange)).size,4);
+  assert.ok(!waiting.has('binance:BTC'));
+  waiting.get('okx:BLUR')({ok:false}); await h.flush();
+  assert.ok(waiting.has('bybit:NEW'), 'other exchanges proceed while Binance is pending');
+  waiting.get('binance:BLUR')({ok:false}); await h.flush();
+  assert.ok(waiting.has('binance:BTC'), 'next market starts without another timer tick');
+  h.document.hidden=true; const count=h.calls.length;
+  for(const resolve of waiting.values())resolve({ok:false}); await h.flush();
+  assert.equal(h.calls.length,count);
+  h.ui.stop();
+});
+
+test('removed last card and disabled scope cancel worker requests; shared cards retain their request',async()=>{
+  const h=harness(()=>new Promise(()=>{}));h.ui.start({startMode:'all'});await h.flush();
+  const original=h.calls.filter(m=>m.type==='funding-projection');
+  h.cards[0].isConnected=false;await h.tick();
+  assert.ok(h.calls.some(m=>m.type==='funding-projection-cancel'&&m.requestId===original.find(m=>m.exchange==='binance').requestId));
+  assert.ok(!h.calls.some(m=>m.type==='funding-projection-cancel'&&m.requestId===original.find(m=>m.exchange==='okx').requestId));
+  h.ui.configure({startMode:'manual'});await h.flush();
+  const queries=h.calls.filter(m=>m.type==='funding-projection'),cancels=h.calls.filter(m=>m.type==='funding-projection-cancel');
+  assert.equal(cancels.length,queries.length);
+  assert.deepEqual(new Set(cancels.map(m=>m.requestId)),new Set(queries.map(m=>m.requestId)));
+  h.ui.stop();
 });
