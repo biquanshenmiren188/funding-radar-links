@@ -1,4 +1,4 @@
-importScripts("limits.js", "astro-reader.js", "rough-risk.js");
+importScripts("limits.js", "astro-reader.js", "rough-risk.js", "projection.js");
 const queryLimit = FundingRadarLimits.createClient();
 const SCRIPT_ID = "funding-radar-links";
 const riskReads = new Map();
@@ -40,7 +40,7 @@ async function syncScript() {
   await chrome.scripting.registerContentScripts([{
     id: SCRIPT_ID,
     matches: [match],
-    js: ["linking.js", "limits.js", "alerts.js", "risk-inline.js", "content.js"],
+    js: ["linking.js", "limits.js", "alerts.js", "risk-inline.js", "projection-inline.js", "content.js"],
     css: ["content.css"],
     runAt: "document_idle",
     persistAcrossSessions: true
@@ -64,5 +64,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     return queryLimit(message.symbol);
   })().then(sendResponse, () => sendResponse({ state: "unknown", reason: "无法查询，请刷新看板或重新保存插件设置", checkedAt: Date.now() }));
+  return true;
+});
+
+const queryProjection = FundingRadarProjection.createClient();
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "funding-projection") return;
+  (async () => {
+    const { siteOrigin } = await chrome.storage.local.get("siteOrigin");
+    if (sender.id !== chrome.runtime.id || !Number.isInteger(sender.tab?.id) || sender.frameId !== 0 ||
+        !siteOrigin || new URL(sender.url).origin !== siteOrigin) throw new Error("查询来源未授权");
+    return queryProjection(message.exchange, message.symbol);
+  })().then(sendResponse, () => sendResponse({ ok: false, error: "无法查询，请刷新看板或重新保存插件设置" }));
   return true;
 });

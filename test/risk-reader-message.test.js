@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function setup() {
  const listeners=[],calls=[];
- const context={console,URL,importScripts(){},FundingRadarLimits:{createClient:()=>()=>{}},FundingRadarRoughRisk:require('../rough-risk.js'),readAstroRiskSnapshot:()=>{},chrome:{
+ const context={console,URL,FundingRadarProjection:{createClient:()=>()=>{}},importScripts(){},FundingRadarLimits:{createClient:()=>()=>{}},FundingRadarRoughRisk:require('../rough-risk.js'),readAstroRiskSnapshot:()=>{},chrome:{
  runtime:{id:'unit',onMessage:{addListener:fn=>listeners.push(fn)},onInstalled:{addListener(){}},onStartup:{addListener(){}}},
  storage:{local:{get:async()=>({siteOrigin:'https://dashboard.example.com'})}},
  scripting:{executeScript:async args=>{calls.push(args);return[{result:{capturedAt:Date.now(),pairs:[],accounts:{}}}];}}}};

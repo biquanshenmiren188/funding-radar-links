@@ -22,6 +22,13 @@
       interval: [30, 60, 120, 300].includes(Number(value.interval)) ? Number(value.interval) : 60,
       coins: parseCoins(value.coins) };
   }
+  function fundingSettings(value = {}) {
+    const mode = ["manual", "all", "selected"].includes(value.startMode) ? value.startMode
+      : value.enabled === true ? (value.mode === "all" ? "all" : "selected") : "manual";
+    return { startMode: mode,
+      interval: [10, 30, 60, 300].includes(Number(value.interval)) && (value.startMode || value.enabled === true) ? Number(value.interval) : 30,
+      coins: parseCoins(value.coins) };
+  }
   function classify(symbol, meta, caps) {
     if (typeof symbol !== "string" || !symbol.trim() || symbol.length > 60 || symbol.includes(":")) {
       return { state: "unknown", reason: "币种未识别或不在原生永续查询范围" };
@@ -83,6 +90,6 @@
       }
     };
   }
-  root.FundingRadarLimits = { parseCoins, settings, classify, createClient, createReleaseTracker, FRESH_MS };
+  root.FundingRadarLimits = { parseCoins, settings, fundingSettings, classify, createClient, createReleaseTracker, FRESH_MS };
   if (typeof module !== "undefined") module.exports = root.FundingRadarLimits;
 })(globalThis);

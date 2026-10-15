@@ -6,6 +6,9 @@ const button = form.querySelector("button");
 const scopeInput = document.querySelector("#hl-scope");
 function updateScope() { document.querySelector("#hl-coins-group").hidden = scopeInput.value === "all"; }
 scopeInput.addEventListener("change", updateScope);
+const fundingScope = document.querySelector("#funding-scope");
+function updateFundingScope() { document.querySelector("#funding-coins-group").hidden = fundingScope.value !== "selected"; }
+fundingScope.addEventListener("change", updateFundingScope);
 
 function setStatus(message, error = false) {
   status.textContent = message;
@@ -28,7 +31,7 @@ async function applyToOpenTabs(origin, radarOrigin) {
     try {
       if (new URL(tab.url).origin !== origin) continue;
       await chrome.scripting.insertCSS({ target: { tabId: tab.id }, files: ["content.css"] });
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["linking.js", "limits.js", "alerts.js", "content.js"] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["linking.js", "limits.js", "alerts.js", "risk-inline.js", "projection-inline.js", "content.js"] });
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: configuredOrigin => {
@@ -48,7 +51,7 @@ async function applyToOpenTabs(origin, radarOrigin) {
   }
 }
 
-chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert", "hlReleaseCoins"]).then(({ siteOrigin, radarOrigin, hlAutoQuery, hlReleaseAlert, hlReleaseCoins }) => {
+chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlReleaseAlert", "hlReleaseCoins", "fundingAutoQuery"]).then(({ siteOrigin, radarOrigin, hlAutoQuery, hlReleaseAlert, hlReleaseCoins, fundingAutoQuery }) => {
   siteInput.value = siteOrigin || "";
   radarInput.value = radarOrigin || "https://47.79.37.237";
   document.querySelector("#hl-release-alert").checked = hlReleaseAlert !== false;
@@ -58,6 +61,10 @@ chrome.storage.local.get(["siteOrigin", "radarOrigin", "hlAutoQuery", "hlRelease
   document.querySelector("#hl-auto").checked = auto.enabled;
   document.querySelector("#hl-interval").value = String(auto.interval);
   document.querySelector("#hl-coins").value = auto.coins.join(", ");
+  const funding = FundingRadarLimits.fundingSettings(fundingAutoQuery);
+  fundingScope.value = funding.startMode; updateFundingScope();
+  document.querySelector("#funding-interval").value = String(funding.interval);
+  document.querySelector("#funding-coins").value = funding.coins.join(", ");
   if (siteOrigin) setStatus("已配置。修改地址后点击保存即可更新链接。");
 });
 
@@ -80,7 +87,10 @@ form.addEventListener("submit", async event => {
     const hlAutoQuery = { enabled: document.querySelector("#hl-auto").checked,
       interval: Number(document.querySelector("#hl-interval").value), mode: scopeInput.value, coins: rawCoins };
     if (hlAutoQuery.enabled && hlAutoQuery.mode !== "all" && !FundingRadarLimits.settings(hlAutoQuery).coins.length) throw new Error("请填写自动查询的币种，例如 W, BTC");
-    await chrome.storage.local.set({ siteOrigin: origin, radarOrigin, hlAutoQuery, hlReleaseAlert: document.querySelector("#hl-release-alert").checked, hlReleaseCoins: document.querySelector("#hl-release-coins").value });
+    const fundingAutoQuery = { startMode: fundingScope.value,
+      interval: Number(document.querySelector("#funding-interval").value), coins: document.querySelector("#funding-coins").value };
+    if (fundingAutoQuery.startMode === "selected" && !FundingRadarLimits.fundingSettings(fundingAutoQuery).coins.length) throw new Error("请填写自动计算的币种，例如 BLUR, BTC");
+    await chrome.storage.local.set({ fundingAutoQuery, siteOrigin: origin, radarOrigin, hlAutoQuery, hlReleaseAlert: document.querySelector("#hl-release-alert").checked, hlReleaseCoins: document.querySelector("#hl-release-coins").value });
     const result = await chrome.runtime.sendMessage({ type: "sync-script" });
     if (!result?.ok) throw new Error(result?.error || "注册页面脚本失败");
     if (previousOrigin && previousOrigin !== origin) {
