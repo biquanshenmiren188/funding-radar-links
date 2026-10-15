@@ -43,16 +43,17 @@
     for (const row of [...rows].sort((a, b) => a.t - b.t)) {
       if (row.t > asOf) continue;
       const index = Math.floor((row.t - start) / MINUTE) - sampleOffset;
-      if (index < 0 || index >= config.hours * 60) continue;
+      if (index < 0 || index >= minutes) continue;
       if (![row.t, row.p, row.close].every(Number.isFinite)) throw new Error("溢价数据异常");
       const old = byMinute.get(index);
       if (old && old.t !== row.t) throw new Error("同一分钟存在多个溢价采样，口径未核实");
-      byMinute.set(index, row); latest = row;
+      byMinute.set(index, row);
     }
     let past = 0, weight = 0, low = 0, high = 0;
     for (let i = 0; i < minutes; i++) {
       const r = byMinute.get(i);
       if (!r || (r.count !== undefined && r.count !== samples)) throw new Error("本周期历史溢价有缺口，正在等待补齐");
+      latest = r; // The extrapolation anchor must belong to validated, completed history.
       const first = i * samples + 1;
       const w = equal ? samples : (first + first + samples - 1) * samples / 2;
       past += r.p * w; weight += w;
@@ -85,9 +86,11 @@
     if (![start, end, hours, samples, floor, cap, interest, divisor, now].every(Number.isFinite) ||
         ![1, 2, 4, 8].includes(hours) || end - start !== hours * 3600000 ||
         now < start || now >= end || floor >= cap || divisor <= 0 || ![1, 12].includes(samples)) throw new Error("结算周期或费率参数未核实");
-    const elapsed = Math.floor((now - start) / MINUTE);
+    const dataAsOf = Math.floor(now / MINUTE) * MINUTE - (config.forecastLagMinutes || 0) * MINUTE;
+    const elapsed = Math.floor((dataAsOf - start) / MINUTE);
+    if (elapsed < 1) throw new Error("本周期首个完整分钟尚未发布，稍后重试");
     if (!rows.length) throw new Error("最新溢价尚未更新，稍后重试");
-    const { past, weight, latest, low, high } = weightedHistory(config, rows, elapsed, now);
+    const { past, weight, latest, low, high } = weightedHistory(config, rows, elapsed, dataAsOf);
     if (!latest || now - latest.t > 120000) throw new Error("最新溢价尚未更新，稍后重试");
     if (config.verifyGate && weight > 0 &&
         (!Number.isFinite(config.officialRate) || Math.abs(fee(past / weight, config) - config.officialRate) > 0.00000050001)) {
@@ -102,11 +105,11 @@
     const predicted = fee(average, config);
     const samplingError = Math.max(predicted - lower, upper - predicted, 0);
     return { predicted, lower, upper, samplingError, rangeOnly: !!config.bounded && samplingError > MAX_SAMPLING_ERROR,
-      currentPremium: latest.close, average,
+      currentPremium: latest.close, premiumAt: latest.t, dataAsOf, futureWeightRatio: futureWeight / total, average,
       observedMinutes: elapsed, totalMinutes: hours * 60, end, hours, floor, cap,
       officialRate: config.officialRate, checkedAt: now,
       method: config.verifyGate ? "Gate 分钟溢价按标记价/指数价换算 · 时间递增加权 · 已核对官方当前费率" : samples === 12 ? "分钟 OHLC 近似 5 秒采样；用每分钟高低值计算采样误差区间" : "官方分钟溢价采样",
-      assumption: "当前分钟及剩余时间维持最新溢价；非最终结算费率" };
+      assumption: "以最新完整分钟的末次溢价外推剩余时间；分钟内保持同一数据快照，非最终结算费率" };
   }
   function createClient(fetcher = fetch, clock = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms))) {
     const flights = new Map(), cache = new Map(), history = new Map(), requests = new Map();
@@ -231,6 +234,9 @@
         // Bybit's 1m close stamped at start + 1m is the first settlement sample.
         // Confirmed against 1h, 4h, 8h completed periods; OKX uses [start, end).
         sampleOffset: ["bybit", "gate"].includes(exchange) ? 1 : 0,
+        // Bybit's audited settlement alignment uses the candle stamped at the
+        // sample endpoint. That candle itself must finish before a live forecast.
+        forecastLagMinutes: exchange === "bybit" ? 1 : 0,
         verifyGate: exchange === "gate",
         bounded: samples === 12,
         equal: ["binance", "aster"].includes(exchange) && hours === 1, serverTime };
@@ -272,6 +278,8 @@
       coin = coin.toUpperCase();
       const key = exchange + ":" + coin;
       const old = cache.get(key);
+      if (old?.ok && exchange !== "hyperliquid" && old.end > clock() &&
+          Math.floor(old.checkedAt / MINUTE) === Math.floor(clock() / MINUTE)) return old;
       if (old && clock() - old.checkedAt < (old.ok ? 9000 : 5000) && (!old.end || clock() < old.end)) return old;
       if (flights.has(key)) return flights.get(key);
       const task = (async () => {

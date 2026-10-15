@@ -36,7 +36,7 @@
       if (!r?.ok) return r?.error || "点击计算下一次结算费率";
       if (!fresh(r)) return "估算已过期，点击重新计算";
       if (r.kind === "official") return `${d.exchanges[i].toUpperCase()} ${d.symbol} · ${r.hours}h\n官方预估 ${percent(r.predicted)}\n结算 ${new Date(r.end).toLocaleString("zh-CN", { hour12: false })}\n${r.method}\n${r.assumption}`;
-      return `${d.exchanges[i].toUpperCase()} ${d.symbol} · ${r.hours}h\n预计结算 ${estimate(r)}${r.samplingError > 0 ? `\n采样区间 ${percent(r.lower)}～${percent(r.upper)}（仅历史采样误差，不含未来行情变化）` : ""}\n官方当前 ${percent(r.officialRate)}\n最新溢价 ${percent(r.currentPremium)}\n预计周期均值 ${percent(r.average)}\n结算 ${new Date(r.end).toLocaleString("zh-CN", { hour12: false })}\n历史 ${r.observedMinutes}/${r.totalMinutes} 分钟，余下按最新溢价推算\n${r.method}\n${r.assumption}\n查询 ${new Date(r.checkedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
+      return `${d.exchanges[i].toUpperCase()} ${d.symbol} · ${r.hours}h\n情景估算 ${estimate(r)}${r.samplingError > 0 ? `\n历史采样保守范围 ${percent(r.lower)}～${percent(r.upper)}（并非已测得误差，不含未来行情变化）` : ""}\n官方当前 ${percent(r.officialRate)}\n完整分钟末次溢价 ${percent(r.currentPremium)}\n预计周期均值 ${percent(r.average)}\n结算 ${new Date(r.end).toLocaleString("zh-CN", { hour12: false })}\n历史 ${r.observedMinutes}/${r.totalMinutes} 分钟${Number.isFinite(r.dataAsOf) ? `\n数据截止 ${new Date(r.dataAsOf).toLocaleTimeString("zh-CN", { hour12: false })}` : ""}${Number.isFinite(r.futureWeightRatio) ? `\n剩余外推权重 ${(r.futureWeightRatio * 100).toFixed(1)}%` : ""}\n${r.method}\n${r.assumption}\n查询 ${new Date(r.checkedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
     }
     function render(card) {
       const d = linking.readCard(card);
