@@ -1,0 +1,854 @@
+{
+  "frozenAt": "2026-10-15T16:41:01.461Z",
+  "evaluatedAt": "2026-10-15T16:42:58.922Z",
+  "note": "Same frozen candidate for all checks; never choose another using holdout. Passing establishes relative historical improvement only, not a bound on future error.",
+  "results": {
+    "binance": {
+      "candidate": "minute",
+      "adopted": "minute",
+      "accepted": true,
+      "checks": {
+        "temporalLowerMAE": true,
+        "temporalTail": true,
+        "newCoinsLowerMAE": true,
+        "newCoinsTail": true,
+        "delayed": true,
+        "minimumCoverage": true
+      },
+      "periods": 48,
+      "coins": [
+        "DOGE",
+        "SUI",
+        "FARTCOIN",
+        "HYPE"
+      ],
+      "holdout": {
+        "last": {
+          "n": 336,
+          "maePP": 0.004465965190214502,
+          "p95PP": 0.018936299904259244,
+          "maxPP": 0.05963332005918025,
+          "signErrors": 65
+        },
+        "candidate": {
+          "n": 336,
+          "maePP": 0.0036949519072462713,
+          "p95PP": 0.014836353365934016,
+          "maxPP": 0.04254768763136102,
+          "signErrors": 57
+        },
+        "lagLast": {
+          "n": 336,
+          "maePP": 0.004695937450152358,
+          "p95PP": 0.01860226421797263,
+          "maxPP": 0.06399105081049658,
+          "signErrors": 66
+        },
+        "lagCandidate": {
+          "n": 336,
+          "maePP": 0.0036902750039898837,
+          "p95PP": 0.014149471706511048,
+          "maxPP": 0.04824851726136229,
+          "signErrors": 58
+        }
+      },
+      "byCoin": {
+        "DOGE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.006073499368628259,
+            "p95PP": 0.017796195346312133,
+            "maxPP": 0.035587100261727574,
+            "signErrors": 17
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.00509247266156247,
+            "p95PP": 0.014836353365934016,
+            "maxPP": 0.026922509491895952,
+            "signErrors": 17
+          }
+        },
+        "SUI": {
+          "last": {
+            "n": 84,
+            "maePP": 0.009456341060517338,
+            "p95PP": 0.03734853960792397,
+            "maxPP": 0.05963332005918025,
+            "signErrors": 36
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.007232014816414871,
+            "p95PP": 0.023458556535956576,
+            "maxPP": 0.04254768763136102,
+            "signErrors": 28
+          }
+        },
+        "FARTCOIN": {
+          "last": {
+            "n": 84,
+            "maePP": 0.0004652195067002166,
+            "p95PP": 6.776263578034403e-19,
+            "maxPP": 0.020855520565956562,
+            "signErrors": 1
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.000775136972324924,
+            "p95PP": 0.001812101992219137,
+            "maxPP": 0.026921399886288035,
+            "signErrors": 1
+          }
+        },
+        "HYPE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.0018688008250121904,
+            "p95PP": 0.012718352038318585,
+            "maxPP": 0.01887396909149746,
+            "signErrors": 11
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.0016801831786828253,
+            "p95PP": 0.008716115374616737,
+            "maxPP": 0.013288909139621653,
+            "signErrors": 11
+          }
+        }
+      },
+      "excluded": [],
+      "failures": []
+    },
+    "aster": {
+      "candidate": "minute",
+      "adopted": "minute",
+      "accepted": true,
+      "checks": {
+        "temporalLowerMAE": true,
+        "temporalTail": true,
+        "newCoinsLowerMAE": true,
+        "newCoinsTail": true,
+        "delayed": true,
+        "minimumCoverage": true
+      },
+      "periods": 42,
+      "coins": [
+        "DOGE",
+        "SUI",
+        "FARTCOIN",
+        "HYPE"
+      ],
+      "holdout": {
+        "last": {
+          "n": 294,
+          "maePP": 0.0017964444533931068,
+          "p95PP": 0.010349167478920803,
+          "maxPP": 0.03217050070191806,
+          "signErrors": 29
+        },
+        "candidate": {
+          "n": 294,
+          "maePP": 0.0013911202913245559,
+          "p95PP": 0.008194360722188479,
+          "maxPP": 0.021947706451787882,
+          "signErrors": 17
+        },
+        "lagLast": {
+          "n": 294,
+          "maePP": 0.0016633558503797122,
+          "p95PP": 0.008436,
+          "maxPP": 0.01978658251253037,
+          "signErrors": 26
+        },
+        "lagCandidate": {
+          "n": 294,
+          "maePP": 0.0012185069645125053,
+          "p95PP": 0.006768000000000004,
+          "maxPP": 0.01547278320658305,
+          "signErrors": 24
+        }
+      },
+      "byCoin": {
+        "DOGE": {
+          "last": {
+            "n": 70,
+            "maePP": 0.004841264701209538,
+            "p95PP": 0.018188835263698435,
+            "maxPP": 0.03217050070191806,
+            "signErrors": 17
+          },
+          "candidate": {
+            "n": 70,
+            "maePP": 0.004497562017490092,
+            "p95PP": 0.013282304087289535,
+            "maxPP": 0.021947706451787882,
+            "signErrors": 11
+          }
+        },
+        "SUI": {
+          "last": {
+            "n": 70,
+            "maePP": 0.0002743768153715774,
+            "p95PP": 1.3552527156068805e-18,
+            "maxPP": 0.019206377076010382,
+            "signErrors": 1
+          },
+          "candidate": {
+            "n": 70,
+            "maePP": 5.614618393228505e-19,
+            "p95PP": 1.3552527156068805e-18,
+            "maxPP": 1.3552527156068805e-18,
+            "signErrors": 0
+          }
+        },
+        "FARTCOIN": {
+          "last": {
+            "n": 77,
+            "maePP": 1.1440445001876265e-19,
+            "p95PP": 6.776263578034403e-19,
+            "maxPP": 6.776263578034403e-19,
+            "signErrors": 0
+          },
+          "candidate": {
+            "n": 77,
+            "maePP": 1.2320479232789824e-19,
+            "p95PP": 6.776263578034403e-19,
+            "maxPP": 6.776263578034403e-19,
+            "signErrors": 0
+          }
+        },
+        "HYPE": {
+          "last": {
+            "n": 77,
+            "maePP": 0.0022085683524272134,
+            "p95PP": 0.013713472565768539,
+            "maxPP": 0.019596594755510236,
+            "signErrors": 11
+          },
+          "candidate": {
+            "n": 77,
+            "maePP": 0.0012228574600664005,
+            "p95PP": 0.0078219355569536,
+            "maxPP": 0.0119037046267572,
+            "signErrors": 6
+          }
+        }
+      },
+      "excluded": [
+        {
+          "key": "aster:DOGE:1792051200000",
+          "reason": "本周期历史溢价有缺口：14:26:00（UTC+8）采样 11/12，等待官方补齐后自动重试"
+        },
+        {
+          "key": "aster:DOGE:1791878400000",
+          "reason": "本周期历史溢价有缺口：14:55:00（UTC+8）采样 11/12，等待官方补齐后自动重试"
+        },
+        {
+          "key": "aster:SUI:1792051200000",
+          "reason": "本周期历史溢价有缺口：14:26:00（UTC+8）采样 11/12，等待官方补齐后自动重试"
+        },
+        {
+          "key": "aster:SUI:1791878400000",
+          "reason": "本周期历史溢价有缺口：14:55:00（UTC+8）采样 11/12，等待官方补齐后自动重试"
+        },
+        {
+          "key": "aster:FARTCOIN:1792051200000",
+          "reason": "本周期历史溢价有缺口：14:26:00（UTC+8）采样 11/12，等待官方补齐后自动重试"
+        },
+        {
+          "key": "aster:HYPE:1792051200000",
+          "reason": "本周期历史溢价有缺口：14:26:00（UTC+8）采样 11/12，等待官方补齐后自动重试"
+        }
+      ],
+      "failures": []
+    },
+    "bybit": {
+      "candidate": "mean30",
+      "adopted": "last",
+      "accepted": false,
+      "checks": {
+        "temporalLowerMAE": false,
+        "temporalTail": false,
+        "newCoinsLowerMAE": true,
+        "newCoinsTail": true,
+        "delayed": false,
+        "minimumCoverage": true
+      },
+      "periods": 48,
+      "coins": [
+        "DOGE",
+        "SUI",
+        "FARTCOIN",
+        "HYPE"
+      ],
+      "holdout": {
+        "last": {
+          "n": 336,
+          "maePP": 0.0048910144999151795,
+          "p95PP": 0.01732786234407484,
+          "maxPP": 0.09424070155601658,
+          "signErrors": 75
+        },
+        "candidate": {
+          "n": 336,
+          "maePP": 0.0028397304467139587,
+          "p95PP": 0.009978837370062374,
+          "maxPP": 0.025379610984060972,
+          "signErrors": 64
+        },
+        "lagLast": {
+          "n": 336,
+          "maePP": 0.0052085080870044745,
+          "p95PP": 0.02000916694386694,
+          "maxPP": 0.11505996815352698,
+          "signErrors": 70
+        },
+        "lagCandidate": {
+          "n": 336,
+          "maePP": 0.002857642873333499,
+          "p95PP": 0.0101589118069993,
+          "maxPP": 0.023795079064449044,
+          "signErrors": 67
+        }
+      },
+      "byCoin": {
+        "DOGE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.005040948976689603,
+            "p95PP": 0.012727775805613302,
+            "maxPP": 0.037571719447331946,
+            "signErrors": 23
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.003301629426152742,
+            "p95PP": 0.010817152306863718,
+            "maxPP": 0.012567427442827437,
+            "signErrors": 19
+          }
+        },
+        "SUI": {
+          "last": {
+            "n": 84,
+            "maePP": 0.005535244058962809,
+            "p95PP": 0.01709016322765073,
+            "maxPP": 0.03256098858281358,
+            "signErrors": 28
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.0038728220005220817,
+            "p95PP": 0.01136006415973666,
+            "maxPP": 0.025379610984060972,
+            "signErrors": 21
+          }
+        },
+        "FARTCOIN": {
+          "last": {
+            "n": 84,
+            "maePP": 0.002741455833827308,
+            "p95PP": 0.017526705290456444,
+            "maxPP": 0.09424070155601658,
+            "signErrors": 2
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 1.0245065171552015e-18,
+            "p95PP": 3.3881317890172014e-18,
+            "maxPP": 3.3881317890172014e-18,
+            "signErrors": 0
+          }
+        },
+        "HYPE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.006246409130181005,
+            "p95PP": 0.019007992221067208,
+            "maxPP": 0.031296325918225926,
+            "signErrors": 22
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.004184470360181013,
+            "p95PP": 0.012050830602910605,
+            "maxPP": 0.02074585586105334,
+            "signErrors": 24
+          }
+        }
+      },
+      "excluded": [],
+      "failures": []
+    },
+    "bitget": {
+      "candidate": "last",
+      "adopted": "last",
+      "accepted": false,
+      "checks": {
+        "temporalLowerMAE": false,
+        "temporalTail": true,
+        "newCoinsLowerMAE": false,
+        "newCoinsTail": true,
+        "delayed": true,
+        "minimumCoverage": true
+      },
+      "periods": 48,
+      "coins": [
+        "DOGE",
+        "SUI",
+        "FARTCOIN",
+        "HYPE"
+      ],
+      "holdout": {
+        "last": {
+          "n": 336,
+          "maePP": 0.0036416202404629472,
+          "p95PP": 0.0170128657933709,
+          "maxPP": 0.048750683153654696,
+          "signErrors": 49
+        },
+        "candidate": {
+          "n": 336,
+          "maePP": 0.0036416202404629472,
+          "p95PP": 0.0170128657933709,
+          "maxPP": 0.048750683153654696,
+          "signErrors": 49
+        },
+        "lagLast": {
+          "n": 336,
+          "maePP": 0.0034548638218931532,
+          "p95PP": 0.018040270008030355,
+          "maxPP": 0.0683704139196979,
+          "signErrors": 51
+        },
+        "lagCandidate": {
+          "n": 336,
+          "maePP": 0.0034548638218931532,
+          "p95PP": 0.018040270008030355,
+          "maxPP": 0.0683704139196979,
+          "signErrors": 51
+        }
+      },
+      "byCoin": {
+        "DOGE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.003980125221747392,
+            "p95PP": 0.014713295709186936,
+            "maxPP": 0.031025490475879457,
+            "signErrors": 10
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.003980125221747392,
+            "p95PP": 0.014713295709186936,
+            "maxPP": 0.031025490475879457,
+            "signErrors": 10
+          }
+        },
+        "SUI": {
+          "last": {
+            "n": 84,
+            "maePP": 0.005773136275250347,
+            "p95PP": 0.017305407530521597,
+            "maxPP": 0.03662882863284776,
+            "signErrors": 16
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.005773136275250347,
+            "p95PP": 0.017305407530521597,
+            "maxPP": 0.03662882863284776,
+            "signErrors": 16
+          }
+        },
+        "FARTCOIN": {
+          "last": {
+            "n": 84,
+            "maePP": 0.003739380739816808,
+            "p95PP": 0.021469137989146122,
+            "maxPP": 0.048750683153654696,
+            "signErrors": 16
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.003739380739816808,
+            "p95PP": 0.021469137989146122,
+            "maxPP": 0.048750683153654696,
+            "signErrors": 16
+          }
+        },
+        "HYPE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.0010738387250372424,
+            "p95PP": 0.006613400930892988,
+            "maxPP": 0.017161361727575115,
+            "signErrors": 7
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.0010738387250372424,
+            "p95PP": 0.006613400930892988,
+            "maxPP": 0.017161361727575115,
+            "signErrors": 7
+          }
+        }
+      },
+      "excluded": [],
+      "failures": []
+    },
+    "gate": {
+      "candidate": "ema30",
+      "adopted": "ema30",
+      "accepted": true,
+      "checks": {
+        "temporalLowerMAE": true,
+        "temporalTail": true,
+        "newCoinsLowerMAE": true,
+        "newCoinsTail": true,
+        "delayed": true,
+        "minimumCoverage": true
+      },
+      "periods": 36,
+      "coins": [
+        "DOGE",
+        "SUI",
+        "FARTCOIN",
+        "HYPE"
+      ],
+      "holdout": {
+        "last": {
+          "n": 252,
+          "maePP": 0.006208655107525221,
+          "p95PP": 0.025975197232973826,
+          "maxPP": 0.06317619853743861,
+          "signErrors": 79
+        },
+        "candidate": {
+          "n": 252,
+          "maePP": 0.002656038206147905,
+          "p95PP": 0.009779078541480335,
+          "maxPP": 0.03906141282993727,
+          "signErrors": 40
+        },
+        "lagLast": {
+          "n": 252,
+          "maePP": 0.005952894535128578,
+          "p95PP": 0.022271450996540626,
+          "maxPP": 0.05978512848825953,
+          "signErrors": 71
+        },
+        "lagCandidate": {
+          "n": 252,
+          "maePP": 0.002634923751482678,
+          "p95PP": 0.009428340499057379,
+          "maxPP": 0.04792807221850607,
+          "signErrors": 42
+        }
+      },
+      "byCoin": {
+        "DOGE": {
+          "last": {
+            "n": 42,
+            "maePP": 0.005022833100092565,
+            "p95PP": 0.019156831777402687,
+            "maxPP": 0.03221851040401947,
+            "signErrors": 8
+          },
+          "candidate": {
+            "n": 42,
+            "maePP": 0.002761902311539521,
+            "p95PP": 0.0073999999999999995,
+            "maxPP": 0.009779078541480335,
+            "signErrors": 4
+          }
+        },
+        "SUI": {
+          "last": {
+            "n": 42,
+            "maePP": 0.007392854399346555,
+            "p95PP": 0.021464169018097806,
+            "maxPP": 0.028623610114938036,
+            "signErrors": 16
+          },
+          "candidate": {
+            "n": 42,
+            "maePP": 0.004672389552103603,
+            "p95PP": 0.009874216289666522,
+            "maxPP": 0.021627894147928883,
+            "signErrors": 14
+          }
+        },
+        "FARTCOIN": {
+          "last": {
+            "n": 84,
+            "maePP": 0.008301330366943768,
+            "p95PP": 0.03757784951886815,
+            "maxPP": 0.06317619853743861,
+            "signErrors": 28
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.002760289568959042,
+            "p95PP": 0.012780449180165241,
+            "maxPP": 0.03906141282993727,
+            "signErrors": 13
+          }
+        },
+        "HYPE": {
+          "last": {
+            "n": 84,
+            "maePP": 0.004116791205912338,
+            "p95PP": 0.016751855344166188,
+            "maxPP": 0.027706126504357307,
+            "signErrors": 27
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.001490679117663112,
+            "p95PP": 0.00799650288762421,
+            "maxPP": 0.010266898212708042,
+            "signErrors": 9
+          }
+        }
+      },
+      "excluded": [
+        {
+          "key": "gate:DOGE:1792051200000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:DOGE:1792022400000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:DOGE:1791993600000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:DOGE:1791964800000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:DOGE:1791936000000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:DOGE:1791907200000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:SUI:1792051200000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:SUI:1792022400000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:SUI:1791993600000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:SUI:1791964800000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:SUI:1791936000000",
+          "reason": "seen in development; removed from holdout"
+        },
+        {
+          "key": "gate:SUI:1791907200000",
+          "reason": "seen in development; removed from holdout"
+        }
+      ],
+      "failures": []
+    },
+    "okx": {
+      "candidate": "last",
+      "adopted": "last",
+      "accepted": false,
+      "checks": {
+        "temporalLowerMAE": false,
+        "temporalTail": true,
+        "newCoinsLowerMAE": false,
+        "newCoinsTail": true,
+        "delayed": true,
+        "minimumCoverage": true
+      },
+      "periods": 32,
+      "coins": [
+        "DOGE",
+        "SUI",
+        "FARTCOIN",
+        "HYPE"
+      ],
+      "holdout": {
+        "last": {
+          "n": 224,
+          "maePP": 0.004704101590369035,
+          "p95PP": 0.019372560341666116,
+          "maxPP": 0.07073454937778942,
+          "signErrors": 49
+        },
+        "candidate": {
+          "n": 224,
+          "maePP": 0.004704101590369035,
+          "p95PP": 0.019372560341666116,
+          "maxPP": 0.07073454937778942,
+          "signErrors": 49
+        },
+        "lagLast": {
+          "n": 224,
+          "maePP": 0.004491901464139969,
+          "p95PP": 0.021760094473520623,
+          "maxPP": 0.034052566987571975,
+          "signErrors": 40
+        },
+        "lagCandidate": {
+          "n": 224,
+          "maePP": 0.004491901464139969,
+          "p95PP": 0.021760094473520623,
+          "maxPP": 0.034052566987571975,
+          "signErrors": 40
+        }
+      },
+      "byCoin": {
+        "DOGE": {
+          "last": {
+            "n": 42,
+            "maePP": 0.004881411988263513,
+            "p95PP": 0.015587237297011797,
+            "maxPP": 0.021056061804504082,
+            "signErrors": 7
+          },
+          "candidate": {
+            "n": 42,
+            "maePP": 0.004881411988263513,
+            "p95PP": 0.015587237297011797,
+            "maxPP": 0.021056061804504082,
+            "signErrors": 7
+          }
+        },
+        "SUI": {
+          "last": {
+            "n": 77,
+            "maePP": 0.007292784950561097,
+            "p95PP": 0.02370947060797465,
+            "maxPP": 0.07042414768127325,
+            "signErrors": 28
+          },
+          "candidate": {
+            "n": 77,
+            "maePP": 0.007292784950561097,
+            "p95PP": 0.02370947060797465,
+            "maxPP": 0.07042414768127325,
+            "signErrors": 28
+          }
+        },
+        "FARTCOIN": {
+          "last": {
+            "n": 84,
+            "maePP": 0.001444379126760418,
+            "p95PP": 0.003515884992819065,
+            "maxPP": 0.07073454937778942,
+            "signErrors": 2
+          },
+          "candidate": {
+            "n": 84,
+            "maePP": 0.001444379126760418,
+            "p95PP": 0.003515884992819065,
+            "maxPP": 0.07073454937778942,
+            "signErrors": 2
+          }
+        },
+        "HYPE": {
+          "last": {
+            "n": 21,
+            "maePP": 0.007896531661643674,
+            "p95PP": 0.024433537757682804,
+            "maxPP": 0.031715392262678194,
+            "signErrors": 12
+          },
+          "candidate": {
+            "n": 21,
+            "maePP": 0.007896531661643674,
+            "p95PP": 0.024433537757682804,
+            "maxPP": 0.031715392262678194,
+            "signErrors": 12
+          }
+        }
+      },
+      "excluded": [
+        {
+          "key": "okx:DOGE:1792051200000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:DOGE:1792022400000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:DOGE:1791993600000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:DOGE:1791936000000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:DOGE:1791907200000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:DOGE:1791878400000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:SUI:1791907200000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1792051200000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1792022400000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791993600000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791936000000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791907200000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791878400000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791849600000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791820800000",
+          "reason": "incomplete history"
+        },
+        {
+          "key": "okx:HYPE:1791763200000",
+          "reason": "incomplete history"
+        }
+      ],
+      "failures": []
+    }
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "note": "Exploratory only; rolling proxy is reconstructed, not recorded official forecasts. Same adjacent complete cycles for all methods. No production selection from these results.",
+  "results": {
+    "binance": {
+      "cycles": 179,
+      "metrics": {
+        "last": {
+          "n": 1253,
+          "maePP": 0.03682699749984654,
+          "p95PP": 0.18793047388132011,
+          "maxPP": 1.435937
+        },
+        "rollingProxy": {
+          "n": 1253,
+          "maePP": 0.03825218222833025,
+          "p95PP": 0.2044508332116668,
+          "maxPP": 1.3564908644211717
+        },
+        "previousSettlement": {
+          "n": 1253,
+          "maePP": 0.06893121787709498,
+          "p95PP": 0.372034,
+          "maxPP": 1.358217
+        }
+      }
+    },
+    "aster": {
+      "cycles": 114,
+      "metrics": {
+        "last": {
+          "n": 798,
+          "maePP": 0.02506297748443862,
+          "p95PP": 0.0942639761723722,
+          "maxPP": 1.3709435828593228
+        },
+        "rollingProxy": {
+          "n": 798,
+          "maePP": 0.023856283644269994,
+          "p95PP": 0.10142268687720535,
+          "maxPP": 1.198819093417903
+        },
+        "previousSettlement": {
+          "n": 798,
+          "maePP": 0.04014370175438597,
+          "p95PP": 0.28359899999999993,
+          "maxPP": 1.061128
+        }
+      }
+    },
+    "bybit": {
+      "cycles": 184,
+      "metrics": {
+        "last": {
+          "n": 1288,
+          "maePP": 0.07965485194129757,
+          "p95PP": 0.3512368430266805,
+          "maxPP": 7.536917480327871
+        },
+        "rollingProxy": {
+          "n": 1288,
+          "maePP": 0.08201535872794839,
+          "p95PP": 0.3384797784130287,
+          "maxPP": 6.954883815300547
+        },
+        "previousSettlement": {
+          "n": 1288,
+          "maePP": 0.0914389184782609,
+          "p95PP": 0.623595,
+          "maxPP": 1.3443699999999998
+        }
+      }
+    },
+    "bitget": {
+      "cycles": 121,
+      "metrics": {
+        "last": {
+          "n": 847,
+          "maePP": 0.046703396471679044,
+          "p95PP": 0.28632398322893593,
+          "maxPP": 1.4321000000000002
+        },
+        "rollingProxy": {
+          "n": 847,
+          "maePP": 0.05080553721400932,
+          "p95PP": 0.3040593836863439,
+          "maxPP": 1.409988184732733
+        },
+        "previousSettlement": {
+          "n": 847,
+          "maePP": 0.09309173553719012,
+          "p95PP": 0.5279,
+          "maxPP": 1.417
+        }
+      }
+    },
+    "gate": {
+      "cycles": 269,
+      "metrics": {
+        "last": {
+          "n": 1883,
+          "maePP": 0.03356386161777289,
+          "p95PP": 0.16291538913777343,
+          "maxPP": 1.3760999999999999
+        },
+        "rollingProxy": {
+          "n": 1883,
+          "maePP": 0.029450121218973925,
+          "p95PP": 0.14145811931365726,
+          "maxPP": 1.3342512563076416
+        },
+        "previousSettlement": {
+          "n": 1883,
+          "maePP": 0.05139219330855021,
+          "p95PP": 0.2873,
+          "maxPP": 1.3283999999999998
+        }
+      }
+    },
+    "okx": {
+      "cycles": 58,
+      "metrics": {
+        "last": {
+          "n": 406,
+          "maePP": 0.06011179745700495,
+          "p95PP": 0.3439166354651723,
+          "maxPP": 1.005
+        },
+        "rollingProxy": {
+          "n": 406,
+          "maePP": 0.06357035263608572,
+          "p95PP": 0.3412092521856271,
+          "maxPP": 0.9200735684949131
+        },
+        "previousSettlement": {
+          "n": 406,
+          "maePP": 0.11184448810794383,
+          "p95PP": 0.74898993900835,
+          "maxPP": 0.9033413376612001
+        }
+      }
+    }
+  }
+}

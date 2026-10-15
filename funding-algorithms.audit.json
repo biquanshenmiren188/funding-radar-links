@@ -1,7 +1,13 @@
 {
-  "auditedOn": "2026-10-15",
+  "auditedOn": "2026-10-16",
   "releaseReady": false,
   "implementationReady": true,
+  "forecastPolicy189": {
+    "methods": { "binance": "minute", "aster": "minute", "gate": "ema30", "bybit": "last", "bitget": "last", "okx": "last", "hyperliquid": "official" },
+    "evidence": "1033 complete unique development cycles, chronological train/validation/test with boundary purge. Candidates frozen before fetching a separate coin cohort; 254 additional complete non-overlapping cycles. Binance/Aster minute OHLC mean and Gate EMA30 passed both cohorts; Bybit candidate rejected; Bitget/OKX retained. See audit/funding-backtest-2026-10-16.txt and acceptance JSON.",
+    "status": "Local source 1.8.9. Production-client API smoke checks returned all seven venues on supported instruments; no installed-browser reload or deployment claimed for 1.8.9.",
+    "limitation": "Relative historical improvement only. Early-cycle stress cases still exceed 1 percentage point. Historical caps are not fully archived; uncapped offline research is not an exact reconstruction of all historical plugin outputs. UI sampling envelope remains conditional on the selected future anchor."
+  },
   "historyLag187": "Trailing unpublished/incomplete history up to five minutes is included in the constant-last-complete-premium scenario remainder, not filled into historical observations. The preceding history must remain continuous and complete; internal gaps still retry. Bybit's existing one-minute alignment lag remains separate. Gate continues its accrued-rate consistency check. Tooltip reports the actual data cutoff and extra lag. Captured Aster input at 23:20:13 with 197 complete minutes and 3-minute lag replays successfully; same-time live Aster, Binance and Gate checks succeeded. This does not establish a bound on future forecast error.",
   "compactUi181": "User-requested numeric-only badge: signed percentage-scale value with 3 decimals and no percent symbol. Removes expanded details. Formula and sampling envelope are unchanged; rangeOnly and official source distinctions remain in tooltip/accessible description, not the visible badge. Visible point estimates do not assert the <=0.005pp sampling bound when rangeOnly is true.",
   "deploymentStatus": "Installed 1.8.0 in the user-confirmed Profile 7 unpacked directory, backed up 1.7.3, verified file hashes. User reloaded; refreshed real dashboard shows 36 contract-leg buttons and no expired HL pending badges. Manual Binance/Bitget/OKX BLUR, native HL BLUR and Gate ARC returned results. Aster and Bybit ZEREBRO missing-history errors emitted no number; other Bybit/Aster coins returned results in direct production-client checks. Automatic selected-symbol behavior verified on local browser fixture using real APIs; live auto preference remains user-controlled.",
@@ -11,7 +17,7 @@
     "evidence": "43 complete official historical periods across Binance, Bitget and Aster fall within envelopes, covering 1h/4h/8h. Incomplete sample periods were excluded, not interpolated; raw complete fixtures retained.",
     "limitation": "Not a confidence interval or a bound on future market movement. Missing/stale data still fails after retry."
   },
-  "scope": "Next-settlement scenario for ordinary USDT linear perpetuals, holding the latest official premium constant for the unobserved remainder. Not a guaranteed future funding rate, not a conversion of the dashboard index label.",
+  "scope": "Next-settlement scenario for ordinary USDT linear perpetuals. The future premium anchor is selected per venue by forecastPolicy189; completed-history weights and fee formulas remain venue-specific. Not a guaranteed future funding rate, not a conversion of the dashboard index label.",
   "units": "All formula values are decimal fractions. Percentage points in audit reports multiply fractions by 100.",
   "commonClamp": "clamp(x,lo,hi)=max(lo,min(hi,x)); dampener bounds=-0.0005,+0.0005",
   "releaseConditions": [

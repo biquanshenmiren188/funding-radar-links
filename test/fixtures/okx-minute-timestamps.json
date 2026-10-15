@@ -1,0 +1,534 @@
+{
+  "at": 1792080164197,
+  "rate": {
+    "code": "0",
+    "data": [
+      {
+        "formulaType": "withRate",
+        "fundingRate": "-0.0009635610541572",
+        "fundingTime": "1792094400000",
+        "impactValue": "2000.0000000000000000",
+        "instId": "WAL-USDT-SWAP",
+        "instType": "SWAP",
+        "interestRate": "0.0001000000000000",
+        "maxFundingRate": "0.01",
+        "method": "current_period",
+        "minFundingRate": "-0.01",
+        "nextFundingRate": "",
+        "nextFundingTime": "1792108800000",
+        "premium": "-0.0028130481884065",
+        "prevFundingTime": "1792080000000",
+        "settFundingRate": "-0.0009668566053940",
+        "settState": "settled",
+        "ts": "1792080137273"
+      }
+    ],
+    "msg": ""
+  },
+  "history": {
+    "code": "0",
+    "data": [
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0028130481884065",
+        "ts": "1792080137000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0028374175814310",
+        "ts": "1792080081000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0018003445833009",
+        "ts": "1792080002000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0021950720156404",
+        "ts": "1792079958000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0011493087377684",
+        "ts": "1792079889000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0011764242338619",
+        "ts": "1792079826000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0008256184159873",
+        "ts": "1792079782000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0009773981510622",
+        "ts": "1792079708000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0004672025940483",
+        "ts": "1792079647000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0016462584453600",
+        "ts": "1792079585000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0012141443928008",
+        "ts": "1792079544000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0015375012382175",
+        "ts": "1792079471000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0009168412655883",
+        "ts": "1792079422000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0017986456960815",
+        "ts": "1792079360000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0008357367114722",
+        "ts": "1792079290000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0008063908447010",
+        "ts": "1792079223000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "0E-16",
+        "ts": "1792079164000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0003862673816047",
+        "ts": "1792079102000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0015040364066182",
+        "ts": "1792079048000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0005804265661024",
+        "ts": "1792079000000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0000424981938259",
+        "ts": "1792078925000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0002185473644627",
+        "ts": "1792078876000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0011257930689341",
+        "ts": "1792078811000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0007676366180588",
+        "ts": "1792078750000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0007816736783157",
+        "ts": "1792078699000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0008669953524033",
+        "ts": "1792078626000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0015856154348304",
+        "ts": "1792078568000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0011438588641320",
+        "ts": "1792078525000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0019586030452520",
+        "ts": "1792078448000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0012939629323808",
+        "ts": "1792078399000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0023552894147293",
+        "ts": "1792078350000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0020136907251493",
+        "ts": "1792078286000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0025040894347455",
+        "ts": "1792078204000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0026880894649909",
+        "ts": "1792078142000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033054583533090",
+        "ts": "1792078108000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0013774520383562",
+        "ts": "1792078041000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0020461118151557",
+        "ts": "1792077962000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0021032760505123",
+        "ts": "1792077902000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0012490045602756",
+        "ts": "1792077852000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0019401072320452",
+        "ts": "1792077799000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0025214412981841",
+        "ts": "1792077735000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0019554717692608",
+        "ts": "1792077673000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0016571856771878",
+        "ts": "1792077617000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0028310531273715",
+        "ts": "1792077542000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0021155801108404",
+        "ts": "1792077502000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0018831243659903",
+        "ts": "1792077441000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0026998186555272",
+        "ts": "1792077362000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0025391982358154",
+        "ts": "1792077325000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0032182979324242",
+        "ts": "1792077254000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0029380038939749",
+        "ts": "1792077183000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033364051084787",
+        "ts": "1792077139000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0045665209452548",
+        "ts": "1792077063000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0048807562963222",
+        "ts": "1792077014000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0062261488842262",
+        "ts": "1792076945000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0035756280957623",
+        "ts": "1792076892000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0030928016285979",
+        "ts": "1792076827000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0012238442156168",
+        "ts": "1792076776000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033221730795317",
+        "ts": "1792076720000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0039838023390062",
+        "ts": "1792076658000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0027584729958848",
+        "ts": "1792076582000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0027800676248805",
+        "ts": "1792076522000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0029058185843171",
+        "ts": "1792076465000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0012256715011782",
+        "ts": "1792076421000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0027992266648357",
+        "ts": "1792076359000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033482576222273",
+        "ts": "1792076304000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0037562830569952",
+        "ts": "1792076242000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0010286052649770",
+        "ts": "1792076186000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0026567738183667",
+        "ts": "1792076103000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0019152530208909",
+        "ts": "1792076055000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0027318870685247",
+        "ts": "1792075996000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0020071908280469",
+        "ts": "1792075947000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0024196666532719",
+        "ts": "1792075889000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0026752776884384",
+        "ts": "1792075830000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0020505313738653",
+        "ts": "1792075767000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0014974939299389",
+        "ts": "1792075703000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0021864143604518",
+        "ts": "1792075633000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0029185625342162",
+        "ts": "1792075584000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0024917116818522",
+        "ts": "1792075502000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0023339923242222",
+        "ts": "1792075458000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0038298489357056",
+        "ts": "1792075398000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0013719827423319",
+        "ts": "1792075329000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033117796078135",
+        "ts": "1792075265000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0011984342162613",
+        "ts": "1792075218000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0016372995633451",
+        "ts": "1792075144000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0026658120851593",
+        "ts": "1792075093000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0017899267250354",
+        "ts": "1792075044000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033853810934587",
+        "ts": "1792074966000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0025351048513712",
+        "ts": "1792074917000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0029301958069224",
+        "ts": "1792074864000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0013053319704260",
+        "ts": "1792074797000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0033939872833028",
+        "ts": "1792074731000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0015104710262671",
+        "ts": "1792074686000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0032963158104610",
+        "ts": "1792074605000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0023267941614930",
+        "ts": "1792074567000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0023772481460243",
+        "ts": "1792074506000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0025385183035862",
+        "ts": "1792074450000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0040007718510045",
+        "ts": "1792074390000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0021156997218255",
+        "ts": "1792074326000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0017536221094978",
+        "ts": "1792074269000"
+      },
+      {
+        "instId": "WAL-USDT-SWAP",
+        "premium": "-0.0022375925799812",
+        "ts": "1792074194000"
+      }
+    ],
+    "msg": ""
+  }
+}
