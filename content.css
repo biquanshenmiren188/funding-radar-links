@@ -87,10 +87,7 @@
 .funding-radar-index-source { display: none !important; }
 .funding-radar-projection { display: inline; }
 .funding-radar-projection-leg { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-.funding-radar-projection-button { font: inherit; font-size: 12px; line-height: 18px; padding: 0 3px; color: #087d66; background: #f0faf6; border: 1px solid #70ad9d; border-radius: 3px; cursor: pointer; }
+.funding-radar-projection-button { font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; line-height: 18px; padding: 0 3px; color: #087d66; background: #f0faf6; border: 1px solid #70ad9d; border-radius: 3px; cursor: pointer; }
 .funding-radar-projection-button[hidden] { display: none; }
 .funding-radar-projection-button:focus-visible { outline: 2px solid #087d66; outline-offset: 2px; }
 .funding-radar-projection-button:disabled { opacity: .6; cursor: wait; }
-.funding-radar-projection-result { font-size: 12px; color: #466772; }
-.funding-radar-projection-detail { padding: 8px 10px; margin: 4px 0; border: 1px solid #a6cbbb; border-radius: 5px; background: #f5fbf8; color: #24483d; font-size: 12px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
-.funding-radar-projection-detail > button { float: right; border: 0; background: transparent; color: #355e50; cursor: pointer; font-size: 18px; }

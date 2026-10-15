@@ -2,6 +2,11 @@
   "use strict";
   const percent = n => Number.isFinite(n) ? `${n > 0 ? "+" : ""}${(n * 100).toFixed(4)}%` : "—";
   const estimate = r => r.kind === "official" ? `官 ${percent(r.predicted)}` : r.rangeOnly ? `${percent(r.lower)}～${percent(r.upper)}` : `≈${percent(r.predicted)}`;
+  function compactRate(value) {
+    if (!Number.isFinite(value)) return "算";
+    const rounded = Number((value * 100).toFixed(3));
+    return `${rounded < 0 ? "-" : "+"}${Math.abs(rounded).toFixed(3)}`;
+  }
   function create({ linking, limits, send = m => chrome.runtime.sendMessage(m), now = Date.now }) {
     const results = new Map(), pending = new Map();
     let settings = limits.settings(), timer, expiryTimer, stopped = false, generation = 0;
@@ -35,13 +40,12 @@
           const value = document.createElement("span"); value.className = "funding-radar-projection-index";
           const button = document.createElement("button"); button.type = "button"; button.textContent = "算";
           button.className = "funding-radar-projection-button";
-          const result = document.createElement("span"); result.className = "funding-radar-projection-result";
           button.addEventListener("click", e => {
             e.stopPropagation(); e.preventDefault();
             const current = linking.readCard(card); if (!current || current.mode[i] !== "F") return;
-            view.dataset.openLeg = String(i); query(current, i); render(card);
+            query(current, i); render(card);
           });
-          leg.append(value, button, result); view.append(leg);
+          leg.append(value, button); view.append(leg);
         }
         source.insertAdjacentElement("afterend", view);
       }
@@ -49,25 +53,17 @@
       if (view.dataset.identity !== identity) { delete view.dataset.openLeg; view.dataset.identity = identity; }
       [...view.querySelectorAll(".funding-radar-projection-leg")].forEach((leg, i) => {
         text(leg.querySelector(".funding-radar-projection-index"), values[i]);
-        const button = leg.querySelector("button"), output = leg.querySelector(".funding-radar-projection-result");
+        const button = leg.querySelector("button");
+        leg.querySelector(".funding-radar-projection-result")?.remove();
         const r = results.get(key(d, i)), busy = pending.has(key(d, i));
         button.hidden = d.mode[i] !== "F"; button.disabled = busy;
         button.setAttribute("aria-label", `算 ${d.exchanges[i]} ${d.symbol} ${i === 0 ? "左" : "右"}合约结算费率`);
         button.title = describe(r, d, i);
-        text(output, d.mode[i] === "F" ? busy ? "计算中" : fresh(r) ? estimate(r) : "" : "");
-        output.title = button.title;
+        button.setAttribute("aria-description", button.title);
+        button.setAttribute("aria-busy", String(busy));
+        text(button, busy ? "…" : fresh(r) ? compactRate(r.predicted) : "算");
       });
-      let detail = card.querySelector(".funding-radar-projection-detail");
-      const open = Number(view.dataset.openLeg);
-      if (view.dataset.openLeg === undefined || d.mode[open] !== "F") { detail?.remove(); return; }
-      if (!detail) {
-        detail = document.createElement("div"); detail.className = "funding-radar-projection-detail";
-        const close = document.createElement("button"); close.type = "button"; close.textContent = "×"; close.setAttribute("aria-label", "关闭费率估算详情");
-        close.onclick = e => { e.stopPropagation(); delete view.dataset.openLeg; detail.remove(); };
-        const body = document.createElement("div"); body.setAttribute("role", "status");
-        detail.append(close, body); row.insertAdjacentElement("afterend", detail);
-      }
-      text(detail.querySelector("div"), pending.has(key(d, open)) ? "正在获取官方溢价历史并计算…" : describe(results.get(key(d, open)), d, open));
+      card.querySelector(".funding-radar-projection-detail")?.remove();
     }
     function renderAll() { if (!stopped) cards().forEach(render); }
     async function query(d, i) {

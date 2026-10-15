@@ -2,6 +2,7 @@
   "auditedOn": "2026-10-15",
   "releaseReady": false,
   "implementationReady": true,
+  "compactUi181": "User-requested numeric-only badge: signed percentage-scale value with 3 decimals and no percent symbol. Removes expanded details. Formula and sampling envelope are unchanged; rangeOnly and official source distinctions remain in tooltip/accessible description, not the visible badge. Visible point estimates do not assert the <=0.005pp sampling bound when rangeOnly is true.",
   "deploymentStatus": "Installed 1.8.0 in the user-confirmed Profile 7 unpacked directory, backed up 1.7.3, verified file hashes. User reloaded; refreshed real dashboard shows 36 contract-leg buttons and no expired HL pending badges. Manual Binance/Bitget/OKX BLUR, native HL BLUR and Gate ARC returned results. Aster and Bybit ZEREBRO missing-history errors emitted no number; other Bybit/Aster coins returned results in direct production-client checks. Automatic selected-symbol behavior verified on local browser fixture using real APIs; live auto preference remains user-controlled.",
   "approximationPolicy": {
     "thresholdPercentagePoints": 0.005,
