@@ -8,6 +8,8 @@
   const indexPending = new Set();
   const limits = globalThis.FundingRadarLimits;
   const results = new Map();
+  const manualLimits = new Map();
+  const limitFlights = new Map();
   const released = limits.createReleaseTracker();
   const notifier = globalThis.FundingRadarAlerts.createNotifier();
   let releaseAlert = true;
@@ -18,9 +20,31 @@
   let stopped = false;
 
   function renderAll() { document.querySelectorAll(".ant-card").forEach(queue); }
+  function limitEnabled(symbol) {
+    const key = symbol.toUpperCase();
+    return manualLimits.has(key) ? manualLimits.get(key)
+      : autoSettings.enabled && (autoSettings.mode === "all" || autoSettings.coins.includes(key));
+  }
+  function stopSymbol(key) {
+    limitFlights.delete(key); // Invalidate late responses, including a stop/start race.
+    results.delete(key);
+    clearTimeout(expiries.get(key)); expiries.delete(key);
+    released.reset(key);
+  }
+  function toggleLimit(symbol) {
+    const key = symbol.toUpperCase();
+    const enabled = !limitEnabled(key);
+    manualLimits.set(key, enabled);
+    if (enabled) querySymbol(key);
+    else { stopSymbol(key); notifier.clear(); }
+    renderAll();
+    if (!autoTimer) scheduleAuto();
+  }
   async function querySymbol(symbol) {
     const key = symbol.toUpperCase();
-    if (results.get(key)?.state === "loading" || stopped) return;
+    if (limitFlights.has(key) || stopped || !limitEnabled(key)) return;
+    const token = {};
+    limitFlights.set(key, token);
     clearTimeout(expiries.get(key));
     results.set(key, { state: "loading", reason: "正在查询 HL 公共持仓上限" });
     renderAll();
@@ -31,7 +55,8 @@
     } catch (_) {
       result = { state: "unknown", reason: "查询失败，请刷新页面后重试", checkedAt: Date.now() };
     }
-    if (stopped) return;
+    if (stopped || limitFlights.get(key) !== token || !limitEnabled(key)) return;
+    limitFlights.delete(key);
     results.set(key, result);
     // A response arriving after the tab hides must not consume a release notification.
     if (!document.hidden || result.state !== "open") {
@@ -46,13 +71,15 @@
     renderAll();
   }
   function scheduleAuto(immediate = false) {
-    clearTimeout(autoTimer);
-    if (stopped || !autoSettings.enabled || (autoSettings.mode !== "all" && !autoSettings.coins.length) || document.hidden) return;
+    clearTimeout(autoTimer); autoTimer = undefined;
+    if (stopped || document.hidden || (!autoSettings.enabled && ![...manualLimits.values()].some(Boolean))) return;
+    if (autoSettings.mode !== "all" && !autoSettings.coins.length && ![...manualLimits.values()].some(Boolean)) return;
     autoTimer = setTimeout(() => {
+      autoTimer = undefined;
       const symbols = new Set();
       document.querySelectorAll(".ant-card").forEach(card => {
         const details = linking.readLimitCard(card);
-        if (details && (autoSettings.mode === "all" || autoSettings.coins.includes(details.symbol.toUpperCase()))) symbols.add(details.symbol);
+        if (details && limitEnabled(details.symbol)) symbols.add(details.symbol);
       });
       for (const symbol of symbols) querySymbol(symbol);
       scheduleAuto();
@@ -60,51 +87,42 @@
   }
   function visibilityChanged() { if (document.hidden) notifier.clear(); risk.visibilityChanged(); projection?.visibilityChanged(); renderAll(); scheduleAuto(true); }
 
-  function updateLimit(card, details, anchor) {
-    let button = card.querySelector(".funding-radar-limit-button");
-    if (!details) {
-      button?.remove();
-      card.querySelectorAll(".funding-radar-limit-status").forEach(el => el.remove());
-      return;
-    }
-    if (!button) {
-      button = document.createElement("button");
-      button.type = "button";
-      button.className = "funding-radar-link funding-radar-limit-button";
-      button.textContent = "查";
-      button.addEventListener("click", event => {
-        event.preventDefault(); event.stopPropagation();
-        const current = linking.readLimitCard(card);
-        if (current) querySymbol(current.symbol);
-      });
-    }
-    button.title = `查询 ${details.symbol} 的 HL 公共开仓限制`;
-    button.setAttribute("aria-label", `查询 ${details.symbol} Hyperliquid 限额`);
-    if (button.previousElementSibling !== anchor) anchor.insertAdjacentElement("afterend", button);
-    const result = results.get(details.symbol.toUpperCase());
-    button.disabled = result?.state === "loading";
-    if (result?.state === "unknown") button.title = `${details.symbol} 暂无有效查询结果，点击重试`;
-    card.querySelectorAll(".funding-radar-limit-status").forEach(el => {
-      if (!details.hlTags.includes(el.previousElementSibling)) el.remove();
+  function updateLimit(card, details) {
+    // Remove the previous title button and detached badges; retain one control per HL contract tag.
+    card.querySelectorAll(".funding-radar-limit-status").forEach(el => el.remove());
+    card.querySelectorAll(".funding-radar-limit-button").forEach(el => {
+      if (!details?.hlTags.includes(el.previousElementSibling)) el.remove();
     });
+    if (!details) return;
+    const key = details.symbol.toUpperCase();
+    const active = limitEnabled(key);
+    const result = active ? results.get(key) : null;
+    const fresh = result && Number.isFinite(result.checkedAt) && Date.now() - result.checkedAt < limits.FRESH_MS;
+    const state = fresh && ["open", "restricted"].includes(result.state) ? result.state : "idle";
+    const label = { open: "可", restricted: "限", idle: "查" }[state];
     for (const tag of details.hlTags) {
-      let badge = tag.nextElementSibling;
-      if (!badge?.classList.contains("funding-radar-limit-status")) badge = null;
-      if (!result || result.state === "unknown" || (result.checkedAt && Date.now() - result.checkedAt >= limits.FRESH_MS)) { badge?.remove(); continue; }
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "funding-radar-limit-status";
-        badge.setAttribute("role", "status");
-        badge.setAttribute("aria-live", "polite");
-        tag.insertAdjacentElement("afterend", badge);
+      let button = tag.nextElementSibling;
+      if (!button?.classList.contains("funding-radar-limit-button")) {
+        button = document.createElement("button");
+        button.type = "button";
+        button.className = "funding-radar-link funding-radar-limit-button";
+        button.addEventListener("click", event => {
+          event.preventDefault(); event.stopPropagation();
+          const current = linking.readLimitCard(card);
+          if (current?.hlTags.includes(button.previousElementSibling)) toggleLimit(current.symbol);
+        });
+        tag.insertAdjacentElement("afterend", button);
       }
-      const state = result.state;
-      const label = { open: "可", restricted: "限", loading: "查询中" }[state];
-      if (badge.textContent !== label) badge.textContent = label;
-      badge.dataset.state = state;
-      const time = result.checkedAt ? new Date(result.checkedAt).toLocaleTimeString("zh-CN", { hour12: false }) : "";
-      badge.title = `${result.reason}${time ? " · 查询 " + time : ""}`;
-      badge.setAttribute("aria-label", `${details.symbol} ${label}：${badge.title}`);
+      if (button.textContent !== label) button.textContent = label;
+      button.dataset.state = state;
+      button.setAttribute("aria-pressed", String(active));
+      button.setAttribute("aria-busy", String(active && limitFlights.has(key)));
+      button.setAttribute("aria-label", `${active ? "停止" : "开启"} ${details.symbol} HL 自动限仓查询${state !== "idle" ? "，当前" + label : ""}`);
+      const time = fresh ? new Date(result.checkedAt).toLocaleTimeString("zh-CN", { hour12: false }) : "";
+      const status = !active ? "点击立即查询并开启自动刷新" : limitFlights.has(key) ? "正在查询，点击停止"
+        : fresh && state !== "idle" ? `${result.reason} · 查询 ${time}；点击停止`
+        : `${result?.reason || "结果已过期"}；自动查询已开启，点击停止`;
+      button.title = `${details.symbol}：${status}（间隔 ${autoSettings.interval} 秒）`;
     }
   }
 
@@ -148,8 +166,8 @@
         details.nameElement.insertAdjacentElement("afterend", link);
       }
     } else oldLink?.remove();
-    updateLimit(card, limitDetails, link || limitDetails?.nameElement);
-    updateBorrow(card, borrowDetails, card.querySelector(".funding-radar-limit-button") || link || borrowDetails?.nameElement);
+    updateLimit(card, limitDetails);
+    updateBorrow(card, borrowDetails, link || borrowDetails?.nameElement);
     const nameElement = (details || limitDetails || borrowDetails).nameElement;
     if (!nameElement.title) nameElement.title = nameElement.textContent.trim();
     if (!nameElement.parentElement.classList.contains("funding-radar-header")) {
@@ -160,6 +178,7 @@
   function flush() {
     frame = undefined;
     let count = 0;
+    const identitiesChanged = pending.size > 0;
     for (const card of pending) {
       pending.delete(card); indexPending.delete(card);
       if (card.isConnected) updateCard(card);
@@ -170,6 +189,12 @@
       indexPending.delete(card);
       if (card.isConnected) projection?.updateIndex(card);
       count++;
+    }
+    if (identitiesChanged && !pending.size && (manualLimits.size || limitFlights.size || results.size)) {
+      const present = new Set([...document.querySelectorAll(".ant-card")].map(card => linking.readLimitCard(card)?.symbol.toUpperCase()).filter(Boolean));
+      for (const key of new Set([...manualLimits.keys(), ...limitFlights.keys(), ...results.keys()])) {
+        if (!present.has(key)) { stopSymbol(key); manualLimits.delete(key); }
+      }
     }
     if (pending.size || indexPending.size) frame = requestAnimationFrame(flush);
   }
@@ -211,6 +236,7 @@
     clearTimeout(autoTimer);
     expiries.forEach(timer => clearTimeout(timer));
     results.clear();
+    manualLimits.clear(); limitFlights.clear();
     document.removeEventListener("visibilitychange", visibilityChanged);
     observer?.disconnect();
     if (storageListener) chrome.storage.onChanged.removeListener(storageListener);
@@ -240,6 +266,9 @@
       for (const record of records) {
         queueFrom(record.target);
         for (const node of record.addedNodes) queueFrom(node);
+        for (const node of record.removedNodes || []) {
+          if (node.nodeType === Node.ELEMENT_NODE && (node.matches(".ant-card") || node.querySelector(".ant-card"))) queueFrom(node);
+        }
       }
     });
     observer.observe(document.body, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["class"] });
@@ -252,7 +281,11 @@
       if (changes.hlReleaseCoins) { releaseCoins = limits.parseCoins(changes.hlReleaseCoins.newValue); notifier.clear(); }
       if (changes.hlReleaseAlert) { releaseAlert = changes.hlReleaseAlert.newValue !== false; if (!releaseAlert) notifier.clear(); }
       if (changes.fundingAutoQuery) projection?.configure(changes.fundingAutoQuery.newValue);
-      if (changes.hlAutoQuery) { autoSettings = limits.settings(changes.hlAutoQuery.newValue); scheduleAuto(true); }
+      if (changes.hlAutoQuery) {
+        autoSettings = limits.settings(changes.hlAutoQuery.newValue);
+        for (const key of new Set([...results.keys(), ...limitFlights.keys()])) if (!limitEnabled(key)) stopSymbol(key);
+        renderAll(); scheduleAuto(true);
+      }
       if (changes.radarOrigin) {
         radarOrigin = changes.radarOrigin.newValue || linking.DEFAULT_RADAR_ORIGIN;
         document.querySelectorAll(".ant-card").forEach(updateCard);
