@@ -283,7 +283,13 @@
       } else if (exchange === "bitget") {
         const base = "https://api.bitget.com";
         const info = one((await json(url(base, "/api/v3/market/instruments", { category: "USDT-FUTURES", symbol }))).data, "symbol", symbol);
-        if (info.baseCoin !== coin || info.symbolType !== "crypto" || info.type !== "perpetual" || info.status !== "online") throw new Error("该合约未核实支持官方溢价历史");
+        if (info.baseCoin !== coin || info.category !== "USDT-FUTURES" || info.quoteCoin !== "USDT" ||
+            !["crypto", "stock"].includes(info.symbolType) || String(info.isReality).toLowerCase() === "yes" ||
+            info.type !== "perpetual" || info.status !== "online") throw new Error("该合约未核实支持官方溢价历史");
+        // Bitget stock perpetuals have 0% base interest since 2026-03-02.
+        // Reality spot/rTokens are excluded: their premium request falls back to market candles.
+        // https://www.bitget.com/zh-CN/support/articles/12560603859428
+        interest = info.symbolType === "stock" ? 0 : 0.0001;
         const data = await json(url(base, "/api/v2/mix/market/current-fund-rate", { productType: "USDT-FUTURES", symbol }));
         const p = one(data.data, "symbol", symbol);
         hours = number(p.fundingRateInterval); end = number(p.nextUpdate);
