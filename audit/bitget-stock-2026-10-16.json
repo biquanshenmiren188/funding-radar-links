@@ -1,0 +1,116 @@
+{
+  "rows": [
+    {
+      "coin": "INTW",
+      "end": "2026-10-16T00:00:00.000Z",
+      "actual": 0,
+      "reconstructed": 0,
+      "errorPP": 0,
+      "minutes": 480
+    },
+    {
+      "coin": "INTW",
+      "end": "2026-10-15T16:00:00.000Z",
+      "actual": 0,
+      "reconstructed": 1.504481556022729e-05,
+      "errorPP": 0.001504481556022729,
+      "minutes": 480
+    },
+    {
+      "coin": "INTW",
+      "end": "2026-10-15T08:00:00.000Z",
+      "actual": 0,
+      "reconstructed": 0,
+      "errorPP": 0,
+      "minutes": 480
+    },
+    {
+      "coin": "INTW",
+      "end": "2026-10-15T00:00:00.000Z",
+      "actual": 0.000308,
+      "reconstructed": 0.00034704759824406286,
+      "errorPP": 0.0039047598244062857,
+      "minutes": 480
+    },
+    {
+      "coin": "INTW",
+      "end": "2026-10-14T16:00:00.000Z",
+      "actual": 0.000239,
+      "reconstructed": 0.00027719911165184825,
+      "errorPP": 0.0038199111651848238,
+      "minutes": 480
+    },
+    {
+      "coin": "INTW",
+      "end": "2026-10-14T08:00:00.000Z",
+      "actual": -0.000826,
+      "reconstructed": -0.0008349949300415259,
+      "errorPP": -0.0008994930041525905,
+      "minutes": 480
+    },
+    {
+      "coin": "BSP",
+      "end": "2026-10-16T00:00:00.000Z",
+      "actual": 0.002848,
+      "reconstructed": 0.002891510381434345,
+      "errorPP": 0.004351038143434512,
+      "minutes": 480
+    },
+    {
+      "coin": "BSP",
+      "end": "2026-10-15T16:00:00.000Z",
+      "actual": -0.00139,
+      "reconstructed": -0.0013716708284781706,
+      "errorPP": 0.001832917152182938,
+      "minutes": 480
+    },
+    {
+      "coin": "BSP",
+      "end": "2026-10-15T08:00:00.000Z",
+      "actual": 0,
+      "reconstructed": 0,
+      "errorPP": 0,
+      "minutes": 480
+    },
+    {
+      "coin": "BSP",
+      "end": "2026-10-15T00:00:00.000Z",
+      "actual": -0.00215,
+      "reconstructed": -0.002157758443795262,
+      "errorPP": -0.0007758443795261895,
+      "minutes": 480
+    },
+    {
+      "coin": "BSP",
+      "end": "2026-10-14T16:00:00.000Z",
+      "actual": -0.000667,
+      "reconstructed": -0.0007709094107576778,
+      "errorPP": -0.010390941075767789,
+      "minutes": 480
+    },
+    {
+      "coin": "BSP",
+      "end": "2026-10-14T08:00:00.000Z",
+      "actual": 0,
+      "reconstructed": 0,
+      "errorPP": 0,
+      "minutes": 480
+    }
+  ],
+  "summaries": [
+    {
+      "coin": "INTW",
+      "cycles": 6,
+      "maePP": 0.0016881075916277384,
+      "maxErrorPP": 0.0039047598244062857
+    },
+    {
+      "coin": "BSP",
+      "cycles": 6,
+      "maePP": 0.0028917901251519045,
+      "maxErrorPP": 0.010390941075767789
+    }
+  ],
+  "method": "Complete 480-minute OHLC weighted reconstruction; stock base interest 0; historical caps unknown and uncapped; not an early forecast backtest.",
+  "interestSource": "https://www.bitget.com/zh-CN/support/articles/12560603859428"
+}
