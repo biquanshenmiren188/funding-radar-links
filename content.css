@@ -37,7 +37,11 @@
 }
 .funding-radar-link:hover { opacity: 1; text-decoration: underline !important; }
 .funding-radar-limit-button { background: transparent; cursor: pointer; font-family: inherit; }
-.funding-radar-limit-button:disabled { opacity: .55; cursor: wait; }
+.funding-radar-limit-button { margin-right: 5px; min-width: 23px; justify-content: center; }
+.funding-radar-limit-button[data-state="open"] { color: #096c38 !important; background: #e7f6eb; }
+.funding-radar-limit-button[data-state="restricted"] { color: #ad2424 !important; background: #fff0ef; }
+.funding-radar-limit-button[aria-busy="true"] { background: #e8f4ff; opacity: .65; }
+.funding-radar-limit-button[aria-pressed="true"][data-state="idle"] { box-shadow: inset 0 -2px currentColor; }
 .funding-radar-limit-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
 .funding-radar-borrow-button { background: transparent; cursor: pointer; font-family: inherit; }
 .funding-radar-borrow-button:focus-visible { outline: 2px solid #1677ff; outline-offset: 2px; }
@@ -58,7 +62,7 @@
   outline: 2px solid #139b5a !important; outline-offset: 2px;
   animation: funding-radar-release-shake .45s ease-in-out 4 !important;
 }
-.funding-radar-release-alert .funding-radar-limit-status[data-state="open"] {
+.funding-radar-release-alert .funding-radar-limit-button[data-state="open"] {
   box-shadow: 0 0 0 2px #7dd6a3;
 }
 .funding-radar-alert-notice {
