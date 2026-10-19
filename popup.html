@@ -38,7 +38,7 @@
           <label for="hl-coins">自动查询币种</label>
           <textarea id="hl-coins" rows="2" maxlength="6000" placeholder="W, BTC, ETH"></textarea>
         </div>
-        <small>仅查询当前卡片中的 HL 永续币种。同币种去重；后台标签页暂停。手动「查」始终可用。</small>
+        <small>仅查询当前卡片中的 HL 永续币种。同币种去重；后台标签页暂停。点击 HL 标签后的「查」可单独开启，点击「可／限」停止；手动停止优先于自动范围。</small>
         <small>「可」表示未触及 HL 公共持仓上限，「限」表示受限。结果 30 秒后自动隐藏。</small>
       </fieldset>
       <fieldset>
@@ -47,7 +47,7 @@
         <label for="hl-release-coins">提醒币种</label>
         <textarea id="hl-release-coins" rows="2" maxlength="6000" placeholder="例如 W, BTC"></textarea>
         <small>只提醒这里指定的币种，留空不提醒。逗号或换行分隔，最多 100 个；与查询范围独立。</small>
-        <small>从「限」恢复「可」时提醒一次，首次查询为「可」不报警。自动提醒需该币种包含在自动查询范围内并有对应卡片。</small>
+        <small>从「限」恢复「可」时提醒一次，首次查询为「可」不报警。提醒需该币种已开启查询且有对应卡片。</small>
       </fieldset>
       <button type="submit">保存并启用</button>
     </form>

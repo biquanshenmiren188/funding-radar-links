@@ -3,7 +3,7 @@
   const FRESH_MS = 30000;
   function createReleaseTracker(now = Date.now) {
     const known = new Map();
-    return (symbol, result) => {
+    const track = (symbol, result) => {
       if (!["open", "restricted"].includes(result?.state) || !Number.isFinite(result.checkedAt) ||
           result.checkedAt > now() || now() - result.checkedAt >= FRESH_MS) return false;
       const key = symbol.toUpperCase();
@@ -12,6 +12,8 @@
       known.set(key, { state: result.state, checkedAt: result.checkedAt });
       return previous?.state === "restricted" && result.state === "open";
     };
+    track.reset = symbol => known.delete(symbol.toUpperCase());
+    return track;
   }
   function parseCoins(value) {
     return [...new Set(String(value || "").split(/[\s,，;；]+/)
