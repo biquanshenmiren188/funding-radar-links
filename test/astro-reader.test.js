@@ -21,7 +21,7 @@ function harness(build, exportName, origin = 'https://dashboard.example.com') {
   vm.runInNewContext(source, context);
   return { calls, imports, read: () => context.readAstroRiskSnapshot(context.location.origin) };
 }
-for (const [build, exp] of [['index-CW16nN3e.js', 'cD'], ['index-UbpzoVda.js', 'cE']]) {
+for (const [build, exp] of [['index-CW16nN3e.js', 'cD'], ['index-UbpzoVda.js', 'cE'], ['index-CftXA7IB.js', 'cF']]) {
   test(`verified ${build} uses its correct export and only returns risk fields`, async () => {
     const h = harness(build, exp), snapshot = await h.read();
     assert.deepEqual(h.calls, ['/api/config', '/api/ex-position?ex=bitget']);
@@ -39,6 +39,13 @@ test('unknown and foreign builds fail before import or account requests', async 
   for (const h of [harness('index-unknown.js', 'cE'), harness('index-UbpzoVda.js', 'cE', 'https://other.example.com')]) {
     await assert.rejects(h.read(), /尚未适配/);
     assert.equal(h.imports.length, 0);
+    assert.equal(h.calls.length, 0);
+  }
+});
+test('current build rejects both older client exports without account requests', async () => {
+  for (const oldExport of ['cD', 'cE']) {
+    const h = harness('index-CftXA7IB.js', oldExport);
+    await assert.rejects(h.read(), /接口版本不匹配/);
     assert.equal(h.calls.length, 0);
   }
 });

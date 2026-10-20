@@ -4,7 +4,7 @@ async function readAstroRiskSnapshot(expectedOrigin) {
   if (location.origin !== expectedOrigin) throw new Error("看板地址已改变，请重新打开插件");
   // Build/export pairs are verified against the dashboard's own GET calls.
   // Minified export names can change independently of the response schema.
-  const clients = { "index-CW16nN3e.js": "cD", "index-UbpzoVda.js": "cE" };
+  const clients = { "index-CW16nN3e.js": "cD", "index-UbpzoVda.js": "cE", "index-CftXA7IB.js": "cF" };
   const entry = [...document.querySelectorAll('script[type="module"][src]')]
     .map(el => new URL(el.src, location.href))
     .find(url => url.origin === expectedOrigin && /\/assets\/index-[\w-]+\.js$/.test(url.pathname) &&
