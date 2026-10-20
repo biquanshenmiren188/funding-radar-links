@@ -3,7 +3,7 @@
 
   const DEFAULT_RADAR_ORIGIN = "https://47.79.37.237";
   const radarExchanges = new Set(["binance", "bybit", "gate", "okx", "bitget", "aster", "hyperliquid"]);
-  const gcExchanges = new Set(["binance", "bybit", "gate", "okx", "hl"]);
+  const gcExchanges = new Set(["binance", "bybit", "gate", "okx", "hl", "aster"]);
 
   function normalizeExchange(value) {
     let exchange = String(value || "").trim().toLowerCase();
