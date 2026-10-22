@@ -6,10 +6,12 @@
   // for freshness, pagination and conflicting-sample validation.
   const minuteBucket = t => Math.floor(t / MINUTE) * MINUTE;
   const EXCHANGES = ["binance", "aster", "bybit", "bitget", "gate", "okx", "hyperliquid"];
-  // Selected independently by venue, then accepted on a separate coin holdout.
-  // This changes only the unknown future premium, never a venue's fee formula.
-  const FORECAST_METHODS = Object.freeze({ binance: "minute", aster: "minute", gate: "ema30",
-    bybit: "last", bitget: "last", okx: "last", hyperliquid: "official" });
+  // User's constant recent-premium scenario. 5/10-minute window selected on
+  // development data only; all six adopted at the user's explicit request,
+  // including Bitget/Gate where independent error did not consistently improve.
+  // Never changes a venue's accrued-history weights or funding formula.
+  const FORECAST_METHODS = Object.freeze({ binance: "mean10", aster: "mean10", gate: "mean10",
+    bybit: "mean5", bitget: "mean10", okx: "mean10", hyperliquid: "official" });
   const UNVERIFIED = Object.freeze({});
   // 0.005 percentage points, exclusively the historical sampling uncertainty.
   // Future market movement is not bounded by this threshold.
@@ -91,6 +93,31 @@
     const { interest, divisor, floor, cap } = config;
     return clamp((premium + clamp(interest - premium, -0.0005, 0.0005)) / divisor, floor, cap);
   }
+  // The scenario uses a real, fixed-length recent window, including minutes
+  // from the prior settlement cycle when necessary. It never substitutes a
+  // shorter window, future candles, or mark/index basis for premium index.
+  function recentPremium(config, rows, elapsed, windowMinutes) {
+    if (![5, 10].includes(windowMinutes)) throw new Error("近期溢价窗口未核实");
+    const last = config.start + (elapsed - 1 + (config.sampleOffset || 0)) * MINUTE;
+    const first = last - (windowMinutes - 1) * MINUTE;
+    const byMinute = new Map();
+    for (const r of rows) {
+      const t = minuteBucket(r.t);
+      if (t < first || t > last) continue;
+      const old = byMinute.get(t);
+      if (old && old.t !== r.t) throw new Error("近期同一分钟存在多个溢价采样");
+      byMinute.set(t, r);
+    }
+    let sum = 0;
+    for (let t = first; t <= last; t += MINUTE) {
+      const r = byMinute.get(t);
+      if (!r || !Number.isFinite(r.p) || (r.count !== undefined && r.count !== config.samples)) {
+        throw new Error(`最近 ${windowMinutes} 分钟溢价有缺口，等待补齐后自动重试`);
+      }
+      sum += r.p;
+    }
+    return sum / windowMinutes;
+  }
   // All inputs are decimal fractions, never display percentages. OHLC averages are
   // approximations of unavailable five-second samples, explicitly labelled in UI.
   function project(config, rows, now) {
@@ -126,9 +153,10 @@
     const total = equal ? n : n * (n + 1) / 2;
     const futureWeight = total - weight;
     const forecastMethod = config.forecastMethod || "last";
-    if (!["last", "minute", "ema30"].includes(forecastMethod)) throw new Error("外推方法未核实");
-    const forecastPremium = forecastMethod === "minute" ? latest.p : forecastMethod === "ema30" ? ema30 : latest.close;
-    const anchorLabel = forecastMethod === "minute" ? "最新完整分钟的 OHLC 近似均值" : forecastMethod === "ema30" ? "本周期完整分钟的 EMA30 平滑溢价（系数 2/31）" : "最新完整分钟的末次溢价";
+    if (!["last", "minute", "ema30", "mean5", "mean10"].includes(forecastMethod)) throw new Error("外推方法未核实");
+    const windowMinutes = forecastMethod === "mean5" ? 5 : forecastMethod === "mean10" ? 10 : 0;
+    const forecastPremium = windowMinutes ? recentPremium(config, rows, elapsed, windowMinutes) : forecastMethod === "minute" ? latest.p : forecastMethod === "ema30" ? ema30 : latest.close;
+    const anchorLabel = windowMinutes ? `最近 ${windowMinutes} 个完整分钟的平均溢价指数` : forecastMethod === "minute" ? "最新完整分钟的 OHLC 近似均值" : forecastMethod === "ema30" ? "本周期完整分钟的 EMA30 平滑溢价（系数 2/31）" : "最新完整分钟的末次溢价";
     const average = (past + forecastPremium * futureWeight) / total;
     const lower = fee((low + forecastPremium * futureWeight) / total, config);
     const upper = fee((high + forecastPremium * futureWeight) / total, config);
@@ -394,7 +422,9 @@
             const count = Math.max(0, Math.floor((Math.floor(config.serverTime / MINUTE) * MINUTE - (config.forecastLagMinutes || 0) * MINUTE - config.start) / MINUTE));
             const byMinute = new Map([...merged.values()].map(r => [minuteBucket(r.t), r]));
             const wanted = [];
-            for (let i = 0; i < count; i++) {
+            const windowMinutes = config.forecastMethod === "mean5" ? 5 : config.forecastMethod === "mean10" ? 10 : 0;
+            const anchorStart = windowMinutes ? Math.min(0, count - windowMinutes - (config.maxHistoryLagMinutes || 0)) : 0;
+            for (let i = anchorStart; i < count; i++) {
               const t = config.start + (i + (config.sampleOffset || 0)) * MINUTE;
               if (!complete(byMinute.get(t)) || (overlap && i >= count - 3)) wanted.push(t);
             }
@@ -416,12 +446,12 @@
               // Preserve validated minutes even when a later gap or request fails.
               // Gate consistency repairs replace the whole three-series snapshot.
               if (exchange !== "gate") history.set(key, { start: config.start, hours: config.hours,
-                rows: [...merged.values()].filter(r => r.t >= config.start && r.t < config.end && complete(r)) });
+                rows: [...merged.values()].filter(r => r.t >= config.start - 15 * MINUTE && r.t < config.end && complete(r)) });
               if (history.size > 100) history.delete(history.keys().next().value);
             }
           }
           await fetchRanges(gaps(true));
-          let rows = [...merged.values()].filter(r => r.t >= config.start);
+          let rows = [...merged.values()].filter(r => r.t >= config.start - 15 * MINUTE);
           let result;
           try { result = project(config, rows, config.serverTime); }
           catch (e) {
@@ -442,7 +472,7 @@
             }
             progress({ stage: "repair" });
             await fetchRanges(gaps(false));
-            rows = [...merged.values()].filter(r => r.t >= config.start);
+            rows = [...merged.values()].filter(r => r.t >= config.start - 15 * MINUTE);
             result = project(config, rows, config.serverTime);
           }
           if (clock() >= config.end || clock() - result.checkedAt >= 120000) throw new Error("周期已切换或响应超时，请重新计算");
@@ -463,6 +493,6 @@
     }
     return query;
   }
-  root.FundingRadarProjection = { project, reconstruct, reconstructRange, fee, gatePremiumRows, createClient, EXCHANGES, FORECAST_METHODS, UNVERIFIED, MAX_SAMPLING_ERROR };
+  root.FundingRadarProjection = { project, reconstruct, reconstructRange, fee, recentPremium, gatePremiumRows, createClient, EXCHANGES, FORECAST_METHODS, UNVERIFIED, MAX_SAMPLING_ERROR };
   if (typeof module !== "undefined") module.exports = root.FundingRadarProjection;
 })(globalThis);

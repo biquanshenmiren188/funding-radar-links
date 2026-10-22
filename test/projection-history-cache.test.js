@@ -10,7 +10,10 @@ test('captured Aster three-minute publication delay produces a complete-history 
  const r=await q('aster','龙虾');
  assert.equal(r.ok,true,r.error);assert.equal(r.historyLagMinutes,3);
  assert.equal(r.observedMinutes,197);assert.equal(r.premiumAt,1792077360000);
- assert.ok(Math.abs(r.predicted-.00005)<1e-12);
+ const complete=f.rows.filter(row=>+row[0]<=r.premiumAt).sort((a,b)=>a[0]-b[0]);
+ const mean=complete.slice(-10).reduce((s,row)=>s+row.slice(1,5).reduce((a,b)=>a+Number(b),0)/4,0)/10;
+ assert.ok(Math.abs(r.forecastPremium-mean)<1e-12);
+ assert.equal(r.forecastMethod,'mean10');
 });
 test('failed history retains good minutes and next attempts request only gaps plus the tail',async()=>{
  const start=1792065600000;let now=start+30*60000,missing=true,calls=[];

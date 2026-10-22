@@ -19,7 +19,11 @@ test('captured OKX WAL second-resolution timestamps are available minutes, not m
   assert.equal(r.currentPremium, -.002837417581431);
   // 00:02:17 sample belongs to the unfinished minute, not the forecast anchor.
   assert.notEqual(r.currentPremium, Number(f.history.data[0].premium));
-  assert.ok(Math.abs(r.predicted - (-.002837417581431 + .0005) / 2) < 1e-7);
+  const recent=f.history.data.filter(p=>Number(p.ts)>=start-8*minute&&Number(p.ts)<start+2*minute);
+  assert.equal(recent.length,10);
+  assert.ok(Math.abs(r.forecastPremium-recent.reduce((s,p)=>s+Number(p.premium),0)/10)<1e-14);
+  // Old-cycle samples inform the scenario only, not accrued-cycle weighting.
+  assert.equal(r.forecastMethod,'mean10');
 });
 
 test('OKX cached seconds timestamps need only one tail page after an initial multi-page query', async () => {
