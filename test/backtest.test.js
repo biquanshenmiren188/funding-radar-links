@@ -54,7 +54,7 @@ test('adopted production methods match the independently evaluated replay on off
   for (const p of periods) {
     p.rows.sort((a, b) => a.t - b.t);
     const method = FORECAST_METHODS[p.exchange];
-    for (const elapsed of [5, 15, Math.floor(p.config.hours * 30)]) {
+    for (const elapsed of [15, 30, Math.floor(p.config.hours * 30)]) {
       const live = project({ ...p.config, forecastMethod: method }, p.rows, p.config.start + elapsed * 60000);
       assert.ok(Math.abs(live.predicted - forecast(p, elapsed, method)) < 1e-12, `${p.exchange} ${method} ${elapsed}`);
       const poisoned = p.rows.map(r => r.t >= p.config.start + elapsed * 60000 + (p.config.sampleOffset || 0) * 60000 ? { ...r, p: .9, close: .9 } : r);
@@ -70,15 +70,16 @@ test('Gate smoothing leaves its accrued-rate reconciliation and completed settle
   assert.equal(reconstruct(config, rows), reconstruct(f.config, rows));
   assert.throws(() => project({ ...config, verifyGate: true, officialRate: .9 }, rows, config.start + 15 * 60000), /官方费率/);
 });
-test('captured Aster ZEREBRO zero-close jump replays with the adopted minute anchor', () => {
+test('captured Aster ZEREBRO zero-close jump retains the historical minute-anchor regression', () => {
   const f = require('./fixtures/aster-zerebro-forecast.json');
   const p = normalized({ ...f, exchange: 'aster' });
   const display = (n, method) => (project({ ...f.config, forecastMethod: method }, p.rows, f.config.start + n * 60000).predicted * 100).toFixed(3);
   assert.deepEqual([display(13, 'last'), display(14, 'last')], ['0.005', '0.043']);
-  assert.deepEqual([display(13, FORECAST_METHODS.aster), display(14, FORECAST_METHODS.aster)], ['0.041', '0.043']);
+  assert.deepEqual([display(13, 'minute'), display(14, 'minute')], ['0.041', '0.043']);
+  for (const n of [13,14]) assert.equal(display(n, FORECAST_METHODS.aster), (forecast(p,n,'mean10')*100).toFixed(3));
   // This regression checks snapshot behavior, not its eventual realized error.
 });
-test('runtime venue policy exactly matches the frozen-candidate acceptance decisions', () => {
-  for (const [exchange, r] of Object.entries(require('../audit/funding-backtest-acceptance.json').results)) assert.equal(FORECAST_METHODS[exchange], r.adopted);
+test('runtime venue policy matches development-only recent-window selection and explicit user adoption', () => {
+  for (const [exchange, r] of Object.entries(require('../audit/recent-window-20261022.json').reports)) assert.equal(FORECAST_METHODS[exchange], r.selected);
   assert.equal(FORECAST_METHODS.hyperliquid, 'official');
 });
