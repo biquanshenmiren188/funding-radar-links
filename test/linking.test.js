@@ -72,7 +72,7 @@ test("ignores non-exchange badges after the two market tags", () => {
 });
 
 test("maps every supported GC venue and HL alias without reversing legs", () => {
-  const aliases = {"gc-binance":"binance", "gc-bybit":"bybit", "gc-gate":"gate", "gc-okx":"okx", "gc-hl":"hyperliquid", hl:"hyperliquid"};
+  const aliases = {"gc-binance":"binance", "gc-bybit":"bybit", "gc-gate":"gate", "gc-okx":"okx", "gc-hl":"hyperliquid", " GC-ASTER ":"aster", hl:"hyperliquid"};
   for (const [left, expectedLeft] of Object.entries(aliases)) for (const [right, expectedRight] of Object.entries(aliases)) {
     for (const [colors, mode] of [[["gold","gold"],"FF"], [["green","gold"],"SF"], [["gold","green"],"FS"]]) {
       const details = readCard(card("MUBARAK", colors, [left,right]));
@@ -85,7 +85,7 @@ test("maps every supported GC venue and HL alias without reversing legs", () => 
 });
 
 test("rejects unverified venues instead of generating a silently wrong radar link", () => {
-  for (const venue of ["gc-aster", "gc-unknown", "unknown", "gc-gc-gate", "gc-hyperliquid"]) {
+  for (const venue of ["gc-unknown", "unknown", "gc-gc-gate", "gc-hyperliquid"]) {
     assert.equal(readCard(card("Q", ["gold","gold"], [venue,"gate"])), null);
     assert.throws(() => makeRadarUrl({symbol:"Q",mode:"FF",exchanges:[venue,"gate"]}), /Unsupported/);
   }
@@ -115,6 +115,18 @@ test('spot HL and unrelated cards have no public perpetual limit shortcut',()=>{
 });
 test('HL lookup does not depend on the other exchange being supported by radar',()=>{
  assert.equal(readLimitCard(card('W',['gold','gold'],['unknown','hl'])).symbol,'W');
+});
+test('GC-ASTER uses Aster market data without gaining HL limits or native account risk',()=>{
+ for (const side of [0,1]) {
+  const venues=['binance','binance']; venues[side]='GC-ASTER';
+  const details=readCard(card('1000TEST',['gold','gold'],venues));
+  assert.equal(details.exchanges[side],'aster');
+  assert.equal(details.mode[side],'F');
+  assert.equal(details.symbol,'1000TEST');
+  assert.equal(readLimitCard(card('TEST',['gold','gold'],venues)),null);
+ }
+ assert.equal(readLimitCard(card('TEST',['gold','gold'],['gc-aster','gc-hl'])).hlTags.length,1);
+ assert.equal(readBorrowCard(card('TEST',['gold','green','blue'],['binance','gc-aster','全'])),null);
 });
 test('HL query keeps exact coin names and rejects overlong identity',()=>{
  for(const symbol of ['1000RATS','xyz:BTC','BTC/USDC','龙虾','X&coin=W']) {

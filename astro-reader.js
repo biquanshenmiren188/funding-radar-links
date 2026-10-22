@@ -2,25 +2,37 @@
    No credentials leave the page; only three allowlisted, read-only endpoint shapes are used. */
 async function readAstroRiskSnapshot(expectedOrigin) {
   if (location.origin !== expectedOrigin) throw new Error("看板地址已改变，请重新打开插件");
-  // Build/export pairs are verified against the dashboard's own GET calls.
-  // Minified export names can change independently of the response schema.
-  const clients = { "index-CW16nN3e.js": "cD", "index-UbpzoVda.js": "cE", "index-CftXA7IB.js": "cF" };
-  const entry = [...document.querySelectorAll('script[type="module"][src]')]
+  // Discover the page's configured client by capabilities, never by build hash or
+  // minified export name. Import only the already-loaded same-origin entry.
+  const entries = [...document.querySelectorAll('script[type="module"][src]')]
     .map(el => new URL(el.src, location.href))
-    .find(url => url.origin === expectedOrigin && /\/assets\/index-[\w-]+\.js$/.test(url.pathname) &&
-      Object.hasOwn(clients, url.pathname.split("/").pop()));
-  if (!entry) throw new Error("当前软件版本尚未适配账户读取，请保持交易看板页面打开");
-  // This export was verified against the running build. Fail closed after a build change.
+    .filter(url => url.origin === expectedOrigin && /\/assets\/index-[\w-]+\.js$/.test(url.pathname));
+  const urls = [...new Set(entries.map(url => url.href))];
+  if (urls.length !== 1) throw new Error("无法唯一识别看板入口，请刷新看板");
+  const entry = new URL(urls[0]);
   const module = await import(entry.href);
-  const client = module[clients[entry.pathname.split("/").pop()]];
-  if (!client || typeof client.get !== "function") throw new Error("软件只读接口版本不匹配");
+  const clients = [...new Set(Object.values(module))].filter(value => {
+    if (!value || typeof value.get !== "function" || typeof value.request !== "function" ||
+        typeof value.getUri !== "function" || value.defaults?.withCredentials !== true ||
+        typeof value.defaults?.baseURL !== "string" ||
+        typeof value.interceptors?.request?.use !== "function" ||
+        typeof value.interceptors?.response?.use !== "function") return false;
+    try { return new URL(value.defaults.baseURL, location.href).origin === expectedOrigin; }
+    catch (_) { return false; }
+  });
+  if (clients.length !== 1) throw new Error("无法唯一识别看板只读接口");
+  const client = clients[0];
   const read = async path => {
     const response = await client.get(path, { timeout: 10000 });
     if (response?.data?.code !== 0 || !response.data.data) throw new Error("软件账户查询失败，请确认已登录");
     return response.data.data;
   };
   const config = await read("/api/config");
-  if (!Array.isArray(config.coinPairs) || !config.mmr) throw new Error("软件未返回持仓或 MMR");
+  const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  if (!Array.isArray(config.coinPairs) || !record(config.mmr) ||
+      !config.coinPairs.every(p => record(p) && typeof p.name === "string" &&
+        typeof p.type === "string" && typeof p.buyEx === "string" && typeof p.sellEx === "string"))
+    throw new Error("软件持仓或 MMR 数据结构已改变");
   const pairs = config.coinPairs.map(p => ({ id: p.id, type: p.type, name: p.name,
     buyEx: p.buyEx, sellEx: p.sellEx, aExPosition: p.aExPosition, bExPosition: p.bExPosition,
     avgOpenAExPrice: p.avgOpenAExPrice, avgOpenBExPrice: p.avgOpenBExPrice, spotMarginType: p.spotMarginType }));
@@ -30,6 +42,10 @@ async function readAstroRiskSnapshot(expectedOrigin) {
   await Promise.all(venues.map(async ex => {
     try {
       const account = await read(`/api/ex-position?ex=${ex}`);
+      if (!record(account.spot) || !record(account.future) ||
+          !["number", "string"].includes(typeof account.futureMargin) ||
+          String(account.futureMargin).trim() === "" || !Number.isFinite(Number(account.futureMargin)))
+        throw new Error("账户数据结构已改变");
       const coins = new Set(pairs.filter(p => p.buyEx === ex || p.sellEx === ex).map(p => p.name));
       for (const key of Object.keys(account.future || {})) coins.add(key.replace(/-(LONG|SHORT|PRICE|MARGIN_MODE)$/, ""));
       const prices = {};
