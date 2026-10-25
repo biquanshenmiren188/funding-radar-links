@@ -19,7 +19,7 @@ function harness(patch={}) {
 test('Bitget stock/ETF perpetuals calculate with zero interest; ordinary crypto retains interest',async()=>{
  const stock=harness();const r=await stock.query('bitget','INTW');
  assert.equal(r.ok,true,r.error);assert.equal(r.predicted,0);assert.equal(r.hours,8);assert.equal(r.cap,.01);assert.equal(r.observedMinutes,30);
- assert.equal(stock.calls.length,3);
+ assert.equal(stock.calls.length,4);
  const crypto=await harness({symbolType:'crypto'}).query('bitget','INTW');assert.equal(crypto.ok,true,crypto.error);assert.equal(crypto.predicted,.0001);
 });
 test('Bitget stock eligibility rejects fallback-prone or mismatched products before loading candles',async()=>{
