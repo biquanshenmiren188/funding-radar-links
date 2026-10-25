@@ -54,23 +54,23 @@ function clientHarness({ failOnce = false, missing = false } = {}) {
     }
     return { ok: true, json: async () => data };
   };
-  const query = createClient(fetcher, () => now, async () => {});
+  const query = createClient(fetcher, () => now, async () => {}, {fallbackAfterMs:30});
   return { query, calls, advance(ms) { now += ms; } };
 }
 test('shared queries coalesce and cached histories fetch only an overlap after refresh', async () => {
   const h = clientHarness();
   const [a, b] = await Promise.all([h.query('bybit', 'BLUR'), h.query('bybit', 'BLUR')]);
-  assert.equal(a.ok, true); assert.equal(a, b); assert.equal(h.calls.length, 3);
-  await h.query('bybit', 'BLUR'); assert.equal(h.calls.length, 3);
+  assert.equal(a.ok, true); assert.equal(a, b); assert.equal(h.calls.length, 4);
+  await h.query('bybit', 'BLUR'); assert.equal(h.calls.length, 4);
   h.advance(60000); assert.equal((await h.query('bybit', 'BLUR')).ok, true);
   const candle = h.calls.filter(x => x.url.includes('kline')).at(-1);
   assert.ok(Number(new URL(candle.url).searchParams.get('start')) > start);
   for (const c of h.calls) { assert.equal(c.options.credentials, 'omit'); assert.equal(c.options.redirect, 'error'); }
 });
 test('429 retries, persistent gaps fail closed and invalid query cannot request an arbitrary URL', async () => {
-  const h = clientHarness({ failOnce: true }); assert.equal((await h.query('bybit', 'BLUR')).ok, true); assert.equal(h.calls.length, 4);
+  const h = clientHarness({ failOnce: true }); assert.equal((await h.query('bybit', 'BLUR')).ok, true); assert.equal(h.calls.length, 5);
   const gap = clientHarness({ missing: true }); assert.equal((await gap.query('bybit', 'BLUR')).ok, false);
-  assert.equal(gap.calls.filter(x => x.url.includes('kline')).length, 2);
+  assert.equal(gap.calls.filter(x => x.url.includes('kline') && new URL(x.url).searchParams.get('limit') !== '2').length, 2);
   const bad = clientHarness();
   assert.equal((await bad.query('evil.example', 'BLUR')).ok, false);
   assert.equal((await bad.query('binance', '../../account')).ok, false);
@@ -143,7 +143,7 @@ function gateHarness({ mismatch = false, missing = false, delayed = false } = {}
     }
     return { ok: true, json: async () => data };
   };
-  return { query: createClient(fetcher, () => now, async () => {}), calls, advance(ms) { now += ms; } };
+  return { query: createClient(fetcher, () => now, async () => {}, {fallbackAfterMs:30}), calls, advance(ms) { now += ms; } };
 }
 
 test('Gate client estimates with live consistency check and incremental three-series history', async () => {
@@ -152,21 +152,21 @@ test('Gate client estimates with live consistency check and incremental three-se
   assert.ok(Math.abs(r.predicted + .0045) < 1e-12);
   assert.equal(r.observedMinutes, 30);
   assert.match(r.method, /已核对/);
-  assert.equal(h.calls.length, 4);
+  assert.equal(h.calls.length, 7);
   h.advance(60000);
   assert.equal((await h.query('gate', 'BLUR')).ok, true);
   const priceUrl = new URL(h.calls.filter(u => u.includes('candlesticks')).at(-1));
   assert.ok(Number(priceUrl.searchParams.get('from')) > start / 1000);
 });
 
-test('Gate retries unsynchronized snapshots, rejects persistent mismatch and repairs missing joins', async () => {
+test('Gate repairs unsynchronized history and uses only marked current snapshots after persistent failure', async () => {
   const recovered = gateHarness({ delayed: true });
   assert.equal((await recovered.query('gate', 'BLUR')).ok, true);
   assert.equal(recovered.calls.filter(u => u.includes('/contracts/')).length, 2);
   const bad = gateHarness({ mismatch: true });
   const result = await bad.query('gate', 'BLUR');
-  assert.equal(result.ok, false); assert.equal(result.predicted, undefined); assert.match(result.error, /尚未同步/);
+  assert.equal(result.ok, true, result.error); assert.equal(result.kind, 'current-only'); assert.ok(Math.abs(result.predicted + .0045) < 1e-12);
   const gap = gateHarness({ missing: true });
-  assert.match((await gap.query('gate', 'BLUR')).error, /缺口/);
-  assert.equal(gap.calls.filter(u => u.includes('/premium_index')).length, 2);
+  assert.equal((await gap.query('gate', 'BLUR')).kind, 'current-only');
+  assert.equal(gap.calls.filter(u => u.includes('/premium_index') && new URL(u).searchParams.get('limit') !== '3').length, 2);
 });

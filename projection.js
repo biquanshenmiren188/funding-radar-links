@@ -93,6 +93,30 @@
     const { interest, divisor, floor, cap } = config;
     return clamp((premium + clamp(interest - premium, -0.0005, 0.0005)) / divisor, floor, cap);
   }
+  function validateConfig(config, now) {
+    const { start, end, hours, samples, floor, cap, interest, divisor } = config;
+    if (![start, end, hours, samples, floor, cap, interest, divisor, now].every(Number.isFinite) ||
+        ![1, 2, 4, 8].includes(hours) || end - start !== hours * 3600000 ||
+        now < start || now >= end || floor >= cap || divisor <= 0 || ![1, 12].includes(samples)) throw new Error("结算周期或费率参数未核实");
+  }
+  // Explicitly a current-only scenario, not a reconstruction of missing history.
+  // Keep the exchange timestamp: generating a result must never renew old data.
+  function projectCurrentPremium(config, now) {
+    validateConfig(config, now);
+    const premium = config.livePremium, premiumAt = config.livePremiumAt ?? config.serverTime, parameterAt = config.serverTime;
+    if (!Number.isFinite(parameterAt) || parameterAt <= 0 || now - parameterAt >= 120000 || parameterAt > now + 30000) throw new Error("官方费率参数已过期");
+    if (!Number.isFinite(premium) || !Number.isFinite(premiumAt) || premiumAt <= 0 ||
+        now - premiumAt >= 120000 || premiumAt > now + 30000) throw new Error("当前溢价指数缺失或已过期");
+    const predicted = fee(premium, config);
+    return { kind: "current-only", predicted, currentPremium: premium, forecastPremium: premium,
+      forecastMethod: "current-only", premiumAt, parameterAt, sourceTime: config.livePremiumSourceTime ?? premiumAt,
+      validUntil: Math.min(config.end, premiumAt + 120000, parameterAt + 120000),
+      average: premium, observedMinutes: 0, totalMinutes: config.hours * 60,
+      end: config.end, hours: config.hours, floor: config.floor, cap: config.cap,
+      officialRate: config.officialRate, checkedAt: now,
+      method: `${(config.exchange || "交易所").toUpperCase()} ${config.livePremiumSource || "当前官方溢价指数"} · 历史未就绪时的简化估算`,
+      assumption: "假设整期溢价均为当前水平，未计入真实历史累计；非最终结算费率" };
+  }
   // The scenario uses a real, fixed-length recent window, including minutes
   // from the prior settlement cycle when necessary. It never substitutes a
   // shorter window, future candles, or mark/index basis for premium index.
@@ -122,9 +146,7 @@
   // approximations of unavailable five-second samples, explicitly labelled in UI.
   function project(config, rows, now) {
     const { start, end, hours, samples, equal, floor, cap, interest, divisor } = config;
-    if (![start, end, hours, samples, floor, cap, interest, divisor, now].every(Number.isFinite) ||
-        ![1, 2, 4, 8].includes(hours) || end - start !== hours * 3600000 ||
-        now < start || now >= end || floor >= cap || divisor <= 0 || ![1, 12].includes(samples)) throw new Error("结算周期或费率参数未核实");
+    validateConfig(config, now);
     const expectedAsOf = Math.floor(now / MINUTE) * MINUTE - (config.forecastLagMinutes || 0) * MINUTE;
     let elapsed = Math.floor((expectedAsOf - start) / MINUTE);
     if (elapsed < 1) throw new Error("本周期首个完整分钟尚未发布，稍后重试");
@@ -169,9 +191,9 @@
       method: config.verifyGate ? "Gate 分钟溢价按标记价/指数价换算 · 时间递增加权 · 已核对官方当前费率" : samples === 12 ? "分钟 OHLC 近似 5 秒采样；用每分钟高低值计算采样误差区间" : "官方分钟溢价采样",
       assumption: `以${anchorLabel}外推剩余时间；分钟内保持同一数据快照，未来行情变化仍可造成较大偏差，非最终结算费率` };
   }
-  function createClient(fetcher = fetch, clock = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)), { queryTimeoutMs = 20000 } = {}) {
+  function createClient(fetcher = fetch, clock = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)), { queryTimeoutMs = 20000, fallbackAfterMs = 30000, okxFallbackAfterMs = fallbackAfterMs, currentPremiumTimeoutMs = 5000 } = {}) {
     const flights = new Map(), cache = new Map(), history = new Map(), requests = new Map();
-    const lanes = new Map();
+    const lanes = new Map(), currentOnly = new Map();
     function publish(entry, progress) {
       entry.progress = progress;
       for (const listener of entry.listeners || []) { try { listener(progress); } catch (_) {} }
@@ -186,7 +208,11 @@
     }
     function consume(entry, signal, onProgress) {
       const consumer = Symbol(); entry.consumers.add(consumer);
-      if (onProgress) { entry.listeners.add(onProgress); if (entry.progress) { try { onProgress(entry.progress); } catch (_) {} } }
+      if (onProgress) {
+        entry.listeners.add(onProgress);
+        if (entry.interimResult) { try { onProgress({ stage: "current-only", result: entry.interimResult }); } catch (_) {} }
+        if (entry.progress) { try { onProgress(entry.progress); } catch (_) {} }
+      }
       return bounded(entry.promise, signal).finally(() => {
         entry.consumers.delete(consumer);
         if (onProgress) entry.listeners.delete(onProgress);
@@ -287,7 +313,7 @@
       const json = (url, body) => requestJson(url, body, signal, progress);
       if (UNVERIFIED[exchange]) throw new Error(UNVERIFIED[exchange]);
       const symbol = `${coin}USDT`;
-      let hours, end, floor, cap, interest = 0.0001, officialRate, serverTime;
+      let hours, end, floor, cap, interest = 0.0001, officialRate, serverTime, livePremium;
       if (exchange === "binance" || exchange === "aster") {
         const base = exchange === "binance" ? "https://fapi.binance.com" : "https://fapi.asterdex.com";
         const p = await json(url(base, "/fapi/v1/premiumIndex", { symbol }));
@@ -329,6 +355,8 @@
         end = number(p.fundingTime); hours = (end - number(p.prevFundingTime)) / 3600000;
         interest = number(p.interestRate); floor = number(p.minFundingRate); cap = number(p.maxFundingRate);
         officialRate = number(p.fundingRate); serverTime = number(p.ts);
+        // A missing current premium must not break a valid historical calculation.
+        livePremium = finite(p.premium) ? Number(p.premium) : null;
       } else if (exchange === "gate") {
         const p = await json(`https://api.gateio.ws/api/v4/futures/usdt/contracts/${encodeURIComponent(coin + "_USDT")}`);
         if (p.name !== coin + "_USDT" || p.type !== "direct" || p.contract_type || p.is_pre_market || p.in_delisting || p.status !== "trading") throw new Error("该合约当前不在普通永续范围");
@@ -340,7 +368,7 @@
       }
       if (Math.abs(clock() - serverTime) > 120000) throw new Error("官方行情时间已过期");
       const samples = ["binance", "aster", "bitget"].includes(exchange) ? 12 : 1;
-      return { hours, end, start: end - hours * 3600000, floor, cap, interest, officialRate,
+      return { exchange, hours, end, start: end - hours * 3600000, floor, cap, interest, officialRate,
         forecastMethod: FORECAST_METHODS[exchange],
         divisor: exchange === "bybit" ? 1 : 8 / hours, samples,
         // Bybit's 1m close stamped at start + 1m is the first settlement sample.
@@ -350,8 +378,58 @@
         // sample endpoint. That candle itself must finish before a live forecast.
         forecastLagMinutes: exchange === "bybit" ? 1 : 0,
         verifyGate: exchange === "gate", maxHistoryLagMinutes: 5,
-        bounded: samples === 12,
+        bounded: samples === 12, livePremium,
         equal: ["binance", "aster"].includes(exchange) && hours === 1, serverTime };
+    }
+    async function currentPremium(exchange, coin, config, signal, progress) {
+      if (exchange === "okx") return; // funding-rate already includes its exact current premium.
+      const json = (u, body) => requestJson(u, body, signal, progress);
+      const symbol = coin + "USDT";
+      let rows, source = "最新官方分钟溢价收盘值";
+      if (exchange === "gate") {
+        const base = "https://api.gateio.ws";
+        // Gate forbids limit together with from/to. Join only the documented
+        // minute preceding each premium sample, as in the audited history adapter.
+        const premium = await json(url(base, "/api/v4/futures/usdt/premium_index", { contract: coin + "_USDT", interval: "1m", limit: 3 }));
+        const marks = await json(url(base, "/api/v4/futures/usdt/candlesticks", { contract: "mark_" + coin + "_USDT", interval: "1m", limit: 5 }));
+        const indices = await json(url(base, "/api/v4/futures/usdt/candlesticks", { contract: "index_" + coin + "_USDT", interval: "1m", limit: 5 }));
+        rows = gatePremiumRows(premium, marks, indices).map(r => ({ t: r.t, value: r.close, at: r.t }));
+        source = "官方分钟溢价按前一分钟标记价/指数价换算";
+      } else {
+        let data;
+        if (exchange === "binance" || exchange === "aster") {
+          data = await json(url(exchange === "binance" ? "https://fapi.binance.com" : "https://fapi.asterdex.com", "/fapi/v1/premiumIndexKlines", { symbol, interval: "1m", limit: 2 }));
+        } else if (exchange === "bybit") {
+          const r = await json(url("https://api.bybit.com", "/v5/market/premium-index-price-kline", { category: "linear", symbol, interval: "1", limit: 2 }));
+          if (r.result?.symbol !== symbol || r.result?.category !== "linear") throw new Error("当前溢价合约身份不匹配");
+          data = r.result.list;
+        } else if (exchange === "bitget") {
+          data = (await json(url("https://api.bitget.com", "/api/v3/market/candles", { category: "USDT-FUTURES", symbol, interval: "1m", type: "premium", limit: 2 }))).data;
+        }
+        if (!Array.isArray(data)) throw new Error("当前溢价数据格式异常");
+        rows = data.map(r => {
+          const t = number(r[0]), value = number(r[4]);
+          if (t % MINUTE !== 0) throw new Error("当前溢价分钟边界异常");
+          // For a completed 1m candle its close belongs to the interval end,
+          // not its open. Never use a future closeTime for an unfinished candle.
+          let end = t + MINUTE;
+          if (["binance", "aster"].includes(exchange) && finite(r[6])) {
+            if (Number(r[6]) !== t + MINUTE - 1) throw new Error("当前溢价收盘时间异常");
+            end = Number(r[6]);
+          }
+          return { t, value, at: end <= clock() ? end : t };
+        });
+      }
+      const unique = new Map();
+      for (const r of rows) {
+        if (![r.t, r.at, r.value].every(Number.isFinite) || r.t > clock()) continue;
+        if (unique.has(r.t) && unique.get(r.t).value !== r.value) throw new Error("当前溢价同一分钟采样冲突");
+        unique.set(r.t, r);
+      }
+      const latest = [...unique.values()].sort((a, b) => b.t - a.t)[0];
+      if (!latest) throw new Error("当前溢价尚未返回");
+      config.livePremium = latest.value; config.livePremiumAt = latest.at;
+      config.livePremiumSourceTime = latest.t; config.livePremiumSource = source;
     }
     async function candles(exchange, coin, start, end, signal, progress) {
       const json = (url, body) => requestJson(url, body, signal, progress);
@@ -390,16 +468,19 @@
       consumerSignal.throwIfAborted();
       if (!EXCHANGES.includes(exchange) || typeof coin !== "string" || !/^[\p{L}\p{N}_-]{1,60}$/u.test(coin)) return { ok: false, error: "币种或交易所未识别" };
       coin = coin.toUpperCase();
-      const key = exchange + ":" + coin;
+      const key = exchange + ":" + coin, hasHistory = exchange !== "hyperliquid";
+      const allowanceMs = exchange === "okx" ? okxFallbackAfterMs : fallbackAfterMs;
       const old = cache.get(key);
-      if (old?.ok && exchange !== "hyperliquid" && old.end > clock() &&
+      if (old?.ok && old.kind !== "current-only" && exchange !== "hyperliquid" && old.end > clock() &&
           Math.floor(old.checkedAt / MINUTE) === Math.floor(clock() / MINUTE)) return old;
-      if (old && clock() - old.checkedAt < (old.ok ? 9000 : 5000) && (!old.end || clock() < old.end)) return old;
+      if (old && clock() - old.checkedAt < (old.ok ? 9000 : 5000) && (!old.end || clock() < old.end) &&
+          (old.kind !== "current-only" || clock() < old.validUntil)) return old;
       const inFlight = flights.get(key);
       if (inFlight && !inFlight.controller.signal.aborted) return consume(inFlight, consumerSignal, onProgress);
       const entry = { controller: new AbortController(), consumers: new Set(), listeners: new Set(), settled: false };
       const began = clock(), timings = [];
       const progress = detail => {
+        if (detail.stage === "current-only") entry.interimResult = detail.result;
         if (["received", "failed-attempt"].includes(detail.stage)) {
           const previous = timings.at(-1);
           if (previous?.endpoint === detail.endpoint && previous.stage === "failed-attempt") timings.pop();
@@ -408,11 +489,47 @@
         publish(entry, { ...detail, elapsedMs: clock() - began });
       };
       const task = (async () => {
-        const controller = entry.controller, signal = controller.signal;
-        const deadline = setTimeout(() => controller.abort(new Error(`计算超过 ${queryTimeoutMs / 1000} 秒，本轮已结束，稍后自动重试`)), queryTimeoutMs);
+        const controller = entry.controller;
+        // A request deadline ends network work but does not cancel its consumers.
+        // User cancellation remains separate and can never produce a fallback.
+        const budget = hasHistory ? new AbortController() : controller;
+        const signal = hasHistory ? AbortSignal.any([controller.signal, budget.signal]) : controller.signal;
+        let state = hasHistory ? currentOnly.get(key) : null;
+        if (state && state.end <= began) { currentOnly.delete(key); state = null; }
+        let timeoutMs = hasHistory && !state ? allowanceMs : queryTimeoutMs;
+        const expire = () => budget.abort(new Error(`计算超过 ${timeoutMs / 1000} 秒，本轮已结束，稍后自动重试`));
+        let deadline = setTimeout(expire, timeoutMs), config, historyStarted = false;
+        const decorate = result => ({ ok: true, exchange, symbol: coin, ...result,
+          diagnostics: { elapsedMs: clock() - began, requests: [...timings] } });
         try {
           if (exchange === "hyperliquid") return { ...await hyperliquid(coin, signal, progress), diagnostics: { elapsedMs: clock() - began, requests: timings } };
-          let config = await metadata(exchange, coin, signal, progress);
+          config = await metadata(exchange, coin, signal, progress);
+          if (hasHistory) {
+            validateConfig(config, clock());
+            if (state && (state.start !== config.start || state.hours !== config.hours)) {
+              currentOnly.delete(key); state = null;
+              timeoutMs = allowanceMs;
+              clearTimeout(deadline); deadline = setTimeout(expire, Math.max(0, timeoutMs - (clock() - began)));
+            }
+            if (exchange !== "okx") {
+              // Obtain a small, separate current snapshot before a long history
+              // request can occupy the venue lane. Its failure never blocks an
+              // otherwise valid normal projection or fabricates history points.
+              const probe = new AbortController();
+              const probeSignal = AbortSignal.any([signal, probe.signal]);
+              const probeDeadline = setTimeout(() => probe.abort(new Error("当前溢价查询超时")), currentPremiumTimeoutMs);
+              try { await currentPremium(exchange, coin, config, probeSignal, progress); }
+              catch (_) { signal.throwIfAborted(); }
+              finally { clearTimeout(probeDeadline); if (!probe.signal.aborted) probe.abort(); }
+            }
+            if (state) {
+              // Refresh the current-only number immediately while the same bounded
+              // query repairs history; a final normal result replaces it in-place.
+              try { progress({ stage: "current-only", result: decorate(projectCurrentPremium(config, clock())) }); } catch (_) {}
+              if (clock() < state.nextHistoryAt) return decorate(projectCurrentPremium(config, clock()));
+            }
+          }
+          historyStarted = true;
           let saved = history.get(key);
           if (saved?.start !== config.start || saved?.hours !== config.hours) saved = null;
           const merged = new Map((saved?.rows || []).map(r => [r.t, r]));
@@ -467,7 +584,9 @@
             }
             await bounded(sleep(700), signal);
             if (exchange === "gate") {
-              config = await metadata(exchange, coin, signal, progress);
+              const { livePremium, livePremiumAt, livePremiumSourceTime, livePremiumSource } = config;
+              config = { ...await metadata(exchange, coin, signal, progress),
+                livePremium, livePremiumAt, livePremiumSourceTime, livePremiumSource };
               merged.clear(); // new settlement cycle or a corrected input must not retain an old join
             }
             progress({ stage: "repair" });
@@ -478,9 +597,32 @@
           if (clock() >= config.end || clock() - result.checkedAt >= 120000) throw new Error("周期已切换或响应超时，请重新计算");
           history.set(key, { start: config.start, hours: config.hours, rows: rows.filter(complete) });
           if (history.size > 100) history.delete(history.keys().next().value);
-          return { ok: true, exchange, symbol: coin, ...result, diagnostics: { elapsedMs: clock() - began, requests: timings } };
-        } catch (e) { return { ok: false, error: e.message || "查询失败，稍后重试", checkedAt: clock(), diagnostics: { elapsedMs: clock() - began, requests: timings } }; }
-        finally { clearTimeout(deadline); }
+          if (hasHistory) currentOnly.delete(key);
+          return decorate(result);
+        } catch (e) {
+          if (hasHistory && historyStarted && !controller.signal.aborted) {
+            if (!state && !budget.signal.aborted) {
+              // A fast HTTP failure or a detected gap must not bypass the initial
+              // thirty-second history allowance. The original deadline keeps running.
+              progress({ stage: "history-wait", error: e.message });
+              await bounded(new Promise(() => {}), signal).catch(() => {});
+            }
+            if (!controller.signal.aborted) {
+              // Record the completed allowance even if this particular premium is
+              // unavailable; a later fresh snapshot need not wait another 30 seconds.
+              const failures = (state?.failures || 0) + 1;
+              currentOnly.set(key, { start: config.start, end: config.end, hours: config.hours, failures,
+                nextHistoryAt: clock() + Math.min(120000, 30000 * 2 ** Math.min(failures - 1, 2)) });
+              if (currentOnly.size > 100) currentOnly.delete(currentOnly.keys().next().value);
+              try { return decorate(projectCurrentPremium(config, clock())); }
+              catch (fallbackError) { e = new Error(`${e.message || "历史未就绪"}；${fallbackError.message}`); }
+            }
+          }
+          return { ok: false, error: e.message || "查询失败，稍后重试", checkedAt: clock(), diagnostics: { elapsedMs: clock() - began, requests: timings } };
+        } finally {
+          clearTimeout(deadline);
+          if (hasHistory && !budget.signal.aborted) budget.abort(new Error("本轮查询已结束"));
+        }
       })();
       entry.promise = task;
       flights.set(key, entry);
@@ -493,6 +635,6 @@
     }
     return query;
   }
-  root.FundingRadarProjection = { project, reconstruct, reconstructRange, fee, recentPremium, gatePremiumRows, createClient, EXCHANGES, FORECAST_METHODS, UNVERIFIED, MAX_SAMPLING_ERROR };
+  root.FundingRadarProjection = { project, projectCurrentPremium, reconstruct, reconstructRange, fee, recentPremium, gatePremiumRows, createClient, EXCHANGES, FORECAST_METHODS, UNVERIFIED, MAX_SAMPLING_ERROR };
   if (typeof module !== "undefined") module.exports = root.FundingRadarProjection;
 })(globalThis);

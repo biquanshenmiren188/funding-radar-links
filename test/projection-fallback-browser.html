@@ -1,0 +1,68 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>资金费超时估算 · 界面回归</title><link rel="stylesheet" href="../content.css">
+<style>body{font:14px system-ui;color:#334155;background:#f5f7fa;margin:0;padding:20px}h1{font-size:20px}#cards{display:flex;gap:12px;flex-wrap:wrap}.ant-card{box-sizing:border-box;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px;width:390px;max-width:100%}.pair-name-link{font-weight:700}p{margin:12px 0}#report{white-space:pre-wrap;font-size:12px}button{cursor:pointer}body>button{margin:8px 0;padding:6px 12px}</style>
+<h1>资金费超时估算 · 界面回归</h1><p>合成行情与虚拟卡片，使用插件实际界面脚本。没有账户请求。</p>
+<button id="run">运行界面回归</button><pre id="report">等待验收</pre><div id="cards"></div>
+<script>
+const listeners=new Set(),calls=[],replies=new Map();let now=Date.now();
+for(const [symbol,label] of [['DEMO','同币共享 A'],['DEMO','同币共享 B'],['OTHER','另一币种']]){
+ const card=document.createElement('div');card.className='ant-card';
+ card.innerHTML=`<div class="ant-card-head"><span class="pair-name-link">${symbol}</span> · ${label}</div><div class="ant-card-body"><p>交易所: <span class="ant-tag ant-tag-green">binance</span> <span class="ant-tag ant-tag-gold">okx</span></p><p>实时指数: <span>0.0010 | -0.4000</span></p></div>`;
+ document.getElementById('cards').append(card);
+}
+window.chrome={runtime:{onMessage:{addListener:f=>listeners.add(f),removeListener:f=>listeners.delete(f)}}};
+function send(m){calls.push(m);if(m.type==='funding-projection-cancel')return Promise.resolve({ok:true});return new Promise(resolve=>replies.set(m.requestId,resolve))}
+const result=(symbol,kind='current-only')=>({ok:true,exchange:'okx',symbol,kind,predicted:-.0004375,checkedAt:now,premiumAt:now,validUntil:now+120000,end:now+3600000,hours:1,currentPremium:-.004,average:-.004,officialRate:-.0002,observedMinutes:0,totalMinutes:60,method:'合成行情',assumption:'合成行情'});
+const emit=(m,r)=>listeners.forEach(f=>f({type:'funding-projection-progress',requestId:m.requestId,progress:{stage:'current-only',result:r}}));
+</script><script src="../linking.js"></script><script src="../limits.js"></script><script src="../projection-inline.js"></script>
+<script>
+const ui=FundingRadarProjectionInline.create({linking:FundingRadarLinking,limits:FundingRadarLimits,send,now:()=>now});ui.start({startMode:'manual',interval:30});
+const frame=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+const buttons=()=>[...document.querySelectorAll('.funding-radar-projection-button')].filter(x=>!x.hidden);
+const outputs=()=>[...document.querySelectorAll('.funding-radar-projection-leg:last-child .funding-radar-projection-result')];
+document.getElementById('run').onclick=async()=>{
+ const checks={};const check=(name,value)=>{checks[name]=!!value;if(!value)throw Error(name)};
+ try{
+ ui.stop();calls.length=0;replies.clear();ui.start({startMode:'manual',interval:30});
+ buttons()[0].click();await frame();
+ const first=calls.find(m=>m.type==='funding-projection');
+ check('同币卡片共用一次查询',calls.filter(m=>m.type==='funding-projection').length===1&&buttons()[1].textContent==='停');
+ buttons()[2].click();await frame();
+ const other=calls.find(m=>m.type==='funding-projection'&&m.symbol==='OTHER');
+ check('另一OKX币种手动开始立即发出',!!other);
+ const fallback=result('DEMO');emit(first,fallback);await frame();
+ check('等待历史期间可立即更新当前指数估算',outputs()[0].textContent==='-0.044'&&!outputs()[0].hidden&&buttons()[0].getAttribute('aria-busy')==='true');
+ check('两个同币卡片同时标红',outputs().slice(0,2).every(x=>getComputedStyle(x).color==='rgb(180, 35, 50)'&&getComputedStyle(x).borderTopColor==='rgb(226, 145, 152)'));
+ check('数字三位小数且无约等于号',outputs().slice(0,2).every(x=>/^[+-]\d+\.\d{3}$/.test(x.textContent)&&!x.textContent.includes('≈')));
+ check('悬停和读屏解释整期假设',outputs()[0].title.includes('未计入真实历史累计')&&outputs()[0].getAttribute('aria-label').includes('等待超过 30 秒')&&!outputs()[0].title.includes('≈'));
+ const rects=[...document.querySelectorAll('.funding-radar-projection-leg')].slice(0,2).map(x=>x.getBoundingClientRect());
+ check('双腿保留单行',Math.abs((rects[0].top+rects[0].bottom)-(rects[1].top+rects[1].bottom))<2);
+ const normal={...result('DEMO','scenario'),predicted:.0002,observedMinutes:20};replies.get(first.requestId)(normal);await frame();
+ check('完整历史恢复后自动取消红色',outputs()[0].textContent==='+0.020'&&outputs()[0].dataset.estimateKind==='normal'&&getComputedStyle(outputs()[0]).color==='rgb(8, 125, 102)');
+ buttons()[2].click();await frame();emit(other,result('OTHER'));replies.get(other.requestId)(result('OTHER'));await frame();
+ check('停止后迟到中间结果和最终结果均丢弃',outputs()[2].hidden&&buttons()[2].textContent==='算');
+ check('停止仅取消对应市场',calls.filter(m=>m.type==='funding-projection-cancel').every(m=>m.requestId===other.requestId));
+ buttons()[0].click();buttons()[0].click();await frame();
+ const fresh=calls.filter(m=>m.type==='funding-projection'&&m.symbol==='DEMO').at(-1);
+ check('重新开始使用新请求编号',fresh.requestId!==first.requestId);
+ const short=result('DEMO');short.validUntil=now+1;emit(fresh,short);await frame();now+=2;ui.visibilityChanged();await frame();
+ check('原始指数过期立即隐藏',outputs()[0].hidden);
+ const restored=result('DEMO');emit(fresh,restored);replies.get(fresh.requestId)(restored);await frame();
+ buttons()[2].click();await frame();const finalOther=calls.filter(m=>m.type==='funding-projection'&&m.symbol==='OTHER').at(-1);replies.get(finalOther.requestId)(result('OTHER','scenario'));await frame();
+ check('红色与正常结果可以同时展示',outputs()[0].dataset.estimateKind==='current-only'&&outputs()[2].dataset.estimateKind==='normal');
+ for(const exchange of ['binance','aster','bybit','bitget','gate']){
+  const card=document.createElement('div');card.className='ant-card';
+  card.innerHTML=`<div class="ant-card-head"><span class="pair-name-link">TEST</span> · ${exchange.toUpperCase()}</div><div class="ant-card-body"><p>交易所: <span class="ant-tag ant-tag-green">binance</span> <span class="ant-tag ant-tag-gold">${exchange}</span></p><p>实时指数: <span>0.0010 | 0.4000</span></p></div>`;
+  document.getElementById('cards').append(card);ui.render(card);card.querySelectorAll('button')[1].click();await frame();
+  const request=calls.filter(m=>m.type==='funding-projection'&&m.exchange===exchange).at(-1);
+  check(exchange+'手动开始立即发出',!!request);
+  const value={...result('TEST'),exchange,predicted:.0004375};emit(request,value);replies.get(request.requestId)(value);await frame();
+  const output=card.querySelectorAll('.funding-radar-projection-result')[1];
+  check(exchange+'正值估算也标红且无符号',output.textContent==='+0.044'&&getComputedStyle(output).color==='rgb(180, 35, 50)'&&!output.title.includes('≈'));
+ }
+ check('页面无横向溢出',document.documentElement.scrollWidth<=innerWidth);
+ document.getElementById('report').textContent=JSON.stringify({passed:Object.keys(checks).length,checks},null,2);
+ document.body.dataset.testStatus='passed';
+ }catch(e){document.getElementById('report').textContent=JSON.stringify({error:e.message,checks},null,2);document.body.dataset.testStatus='failed'}
+};
+</script></html>

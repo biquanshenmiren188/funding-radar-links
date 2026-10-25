@@ -22,18 +22,18 @@ test('failed history retains good minutes and next attempts request only gaps pl
   if(u.pathname.endsWith('/premiumIndex'))data={symbol:'AAAUSDT',time:now,nextFundingTime:start+14400000,lastFundingRate:'.00005',interestRate:'.0001'};
   else if(u.pathname.endsWith('/fundingInfo'))data=[{symbol:'AAAUSDT',fundingIntervalHours:4,adjustedFundingRateCap:'.02',adjustedFundingRateFloor:'-.02'}];
   else {
-   calls.push(u);
+   if(u.searchParams.get("limit")!=="2")calls.push(u);
    const lo=Number(u.searchParams.get('startTime')),hi=Number(u.searchParams.get('endTime'));
    data=Array.from({length:Math.floor((now-start)/60000)},(_,i)=>[start+i*60000,'-.001','-.001','-.001','-.001',0,0,0,12])
     .filter(r=>r[0]>=lo&&r[0]<=hi&&(!missing||r[0]!==start+5*60000));
   }
   return{ok:true,json:async()=>data};
- },()=>now,async()=>{});
+ },()=>now,async()=>{}, {fallbackAfterMs:30});
  const failed=await q('binance','AAA');assert.equal(failed.ok,false);assert.match(failed.error,/缺口/);
  assert.equal(calls.length,2);
  assert.equal(Number(calls[1].searchParams.get('startTime')),start+5*60000);
  assert.equal(Number(calls[1].searchParams.get('endTime')),start+6*60000-1);
- now+=6000;missing=false;calls=[];
+ now+=30000;missing=false;calls=[];
  const repaired=await q('binance','AAA');assert.equal(repaired.ok,true,repaired.error);
  assert.equal(calls.length,2);
  assert.deepEqual(calls.map(u=>Number(u.searchParams.get('startTime'))).sort((a,b)=>a-b),[start+5*60000,start+27*60000]);

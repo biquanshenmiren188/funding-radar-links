@@ -41,13 +41,18 @@
     function progressMessage(message) {
       if (message?.type !== "funding-projection-progress" || stopped) return;
       for (const [k, entry] of pending) if (entry.id === message.requestId) {
-        entry.progress = message.progress; renderMarket(k); break;
+        entry.progress = message.progress;
+        const result = message.progress?.result;
+        if (result?.ok && result.kind === "current-only" &&
+            result.exchange + ":" + result.symbol === k && polling.active(k, result.symbol)) results.set(k, result);
+        renderMarket(k); break;
       }
     }
     const messages = root.chrome?.runtime?.onMessage;
     function cards() { return [...document.querySelectorAll(".ant-card")]; }
     function key(d, i) { return d.exchanges[i] + ":" + d.symbol.toUpperCase(); }
-    function fresh(r) { return r?.ok && now() - r.checkedAt < 120000 && now() < r.end; }
+    function fresh(r) { return r?.ok && now() - r.checkedAt < 120000 && now() < r.end &&
+      (r.kind !== "current-only" || (Number.isFinite(r.validUntil) && now() < r.validUntil)); }
     function text(node, value) { if (node.textContent !== value) node.textContent = value; }
     function attr(node, name, value) { if (node.getAttribute(name) !== value) node.setAttribute(name, value); }
     function property(node, name, value) { if (node[name] !== value) node[name] = value; }
@@ -78,6 +83,7 @@
       if (!r?.ok) return r?.error || "点击计算下一次结算费率";
       if (!fresh(r)) return "估算已过期，点击重新计算";
       if (r.kind === "official") return `${d.exchanges[i].toUpperCase()} ${d.symbol} · ${r.hours}h\n官方预估 ${percent(r.predicted)}\n结算 ${new Date(r.end).toLocaleString("zh-CN", { hour12: false })}\n${r.method}\n${r.assumption}`;
+      if (r.kind === "current-only") return `${d.exchanges[i].toUpperCase()} ${d.symbol} · ${r.hours}h\n当前指数估算 ${percent(r.predicted)}\n历史数据等待超过 30 秒，仅按当前溢价指数估算\n当前溢价指数 ${percent(r.currentPremium)}\n指数时间 ${new Date(r.premiumAt).toLocaleTimeString("zh-CN", { hour12: false })}\n结算 ${new Date(r.end).toLocaleString("zh-CN", { hour12: false })}\n假设整期溢价均为当前水平，未计入真实历史累计。历史恢复后自动切回正常预测。`;
       return `${d.exchanges[i].toUpperCase()} ${d.symbol} · ${r.hours}h\n情景估算 ${estimate(r)}${r.samplingError > 0 ? `\n历史采样保守范围 ${percent(r.lower)}～${percent(r.upper)}（并非已测得误差，不含未来行情变化）` : ""}\n官方当前 ${percent(r.officialRate)}\n完整分钟末次溢价 ${percent(r.currentPremium)}\n预计周期均值 ${percent(r.average)}\n结算 ${new Date(r.end).toLocaleString("zh-CN", { hour12: false })}\n历史 ${r.observedMinutes}/${r.totalMinutes} 分钟${Number.isFinite(r.dataAsOf) ? `\n数据截止 ${new Date(r.dataAsOf).toLocaleTimeString("zh-CN", { hour12: false })}` : ""}${Number.isFinite(r.futureWeightRatio) ? `\n剩余外推权重 ${(r.futureWeightRatio * 100).toFixed(1)}%` : ""}\n${r.method}\n${r.assumption}\n查询 ${new Date(r.checkedAt).toLocaleTimeString("zh-CN", { hour12: false })}`;
     }
     function render(card) {
@@ -110,7 +116,11 @@
             const k = key(current, i);
             polling.toggle(k, current.symbol);
             if (!polling.active(k, current.symbol)) { results.delete(k); cancel(k); }
-            renderMarket(k); tick();
+            renderMarket(k);
+            // Manual starts enter the worker immediately, so its total deadline
+            // includes the exchange request queue instead of an unbounded UI wait.
+            if (current.exchanges[i] !== "hyperliquid" && polling.active(k, current.symbol)) void query(current, i);
+            tick();
           });
           leg.append(value, result, button); view.append(leg);
         }
@@ -149,14 +159,16 @@
         const lag = r?.historyLagMinutes > 0 ? `\n完整历史延迟 ${r.historyLagMinutes} 分钟；延迟部分按末次完整溢价外推` : "";
         const timing = r?.diagnostics ? `\n本轮用时 ${(r.diagnostics.elapsedMs / 1000).toFixed(1)} 秒；接口 ${r.diagnostics.requests.length} 次；排队 ${(r.diagnostics.requests.reduce((n, v) => n + v.queueMs, 0) / 1000).toFixed(1)} 秒` : "";
         const description = describe(r, d, i) + lag + timing;
-        const stage = { queued: "排队中", request: "请求接口", history: "补历史中", repair: "补查缺口", retry: "重试中", received: "计算中", cache: "读取缓存" }[progress?.stage] || "查询中";
+        const stage = { queued: "排队中", request: "请求接口", history: "补历史中", "history-wait": "等待历史恢复", repair: "补查缺口", retry: "重试中", received: "计算中", cache: "读取缓存", "current-only": "当前指数估算，继续补历史" }[progress?.stage] || "查询中";
         property(button, "title", (running ? `点击停止，每 ${settings.interval} 秒计算一次` : "点击开始自动计算") + (busy ? ` · ${stage}${progress?.endpoint ? "\n" + progress.endpoint : ""}` : "") + "\n" + description);
         attr(button, "aria-description", button.title);
         attr(button, "aria-busy", String(busy));
         text(button, running ? "停" : "算");
         property(output, "hidden", d.mode[i] !== "F" || !running || !isFresh);
         text(output, running && isFresh ? compactRate(r.predicted) : "");
+        attr(output, "data-estimate-kind", running && isFresh && r.kind === "current-only" ? "current-only" : "normal");
         property(output, "title", description);
+        attr(output, "aria-label", description);
       });
     }
     function updateIndex(card) {

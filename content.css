@@ -100,6 +100,7 @@ p:has(> .funding-radar-projection) {
 .funding-radar-projection-button { cursor: pointer; font-size: 13px; }
 .funding-radar-projection-button[aria-pressed="true"] { color: #b42332; background: #fff1f0; border-color: #e29198; }
 .funding-radar-projection-result[hidden] { display: none; }
+.funding-radar-projection-result[data-estimate-kind="current-only"] { color: #b42332; border-color: #e29198; }
 .funding-radar-projection-button[hidden] { display: none; }
 .funding-radar-projection-button:focus-visible { outline: 2px solid #087d66; outline-offset: 2px; }
 .funding-radar-projection-button:disabled { opacity: .6; cursor: wait; }
