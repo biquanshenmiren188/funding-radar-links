@@ -211,8 +211,7 @@
     // Price/position text changes do not change the destination. Observe only card identity changes.
     if (node.closest(".funding-radar-link, .funding-radar-limit-status, .funding-radar-alert-notice, .funding-radar-risk, .funding-radar-risk-detail, .funding-radar-projection, .funding-radar-projection-detail")) return;
     const row = node.closest("p");
-    if (row && !/^(交易所|仓位数量|实时指数)\s*[:：]/.test(row.textContent.trim()) && !row.classList.contains("mmr-row")) return;
-    if (projection && row && /^实时指数\s*[:：]/.test(row.textContent.trim())) {
+    if (projection && row && globalThis.FundingRadarProjectionInline.isIndexRow(row)) {
       const card = row.closest(".ant-card");
       if (card && !pending.has(card)) {
         indexPending.add(card);
@@ -220,6 +219,7 @@
       }
       return;
     }
+    if (row && !/^(交易所|仓位数量)\s*[:：]/.test(row.textContent.trim()) && !row.classList.contains("mmr-row")) return;
     if (node.matches(".ant-card")) queue(node);
     else {
       const card = node.closest(".ant-card");

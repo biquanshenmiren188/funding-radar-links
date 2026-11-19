@@ -12,11 +12,14 @@ test('index mutations coalesce and use the index-only renderer instead of all ca
   FundingRadarLimits:{settings:()=>({enabled:false}),parseCoins:()=>[],createReleaseTracker:()=>()=>false},
   FundingRadarAlerts:{createNotifier:()=>({clear(){}})},
   FundingRadarInlineRisk:{create:()=>({start(){},stop(){},render(){},visibilityChanged(){}})},
-  FundingRadarProjectionInline:{create:()=>({start(){},stop(){},updateIndex(){indexUpdates++},render(){fullUpdates++}})},
+  FundingRadarProjectionInline:{isIndexRow:require('../projection-inline.js').isIndexRow,create:()=>({start(){},stop(){},updateIndex(){indexUpdates++},render(){fullUpdates++}})},
   chrome:{storage:{local:{get:async()=>({siteOrigin:'https://local.test'})},onChanged:{addListener(){},removeListener(){}}}}
  };
  vm.runInNewContext(fs.readFileSync(require.resolve('../content.js'),'utf8'),context);
  await new Promise(r=>setImmediate(r));frame();card.isConnected=true;
  observer(Array.from({length:100},()=>({target:node,addedNodes:[]})));frame();
  assert.equal(indexUpdates,1);assert.equal(fullUpdates,0);
+ row.textContent='溢价指数: -0.0098 | 0.1879';
+ observer(Array.from({length:100},()=>({target:node,addedNodes:[]})));frame();
+ assert.equal(indexUpdates,2);assert.equal(fullUpdates,0);
 });
