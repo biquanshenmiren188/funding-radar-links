@@ -1,5 +1,8 @@
 (function (root) {
   "use strict";
+  function isIndexRow(row) {
+    return /^\s*(?:溢价指数|实时指数)\s*[:：]/.test(row.textContent);
+  }
   const percent = n => Number.isFinite(n) ? `${n > 0 ? "+" : ""}${(n * 100).toFixed(4)}%` : "—";
   const estimate = r => r.kind === "official" ? `官 ${percent(r.predicted)}` : r.rangeOnly ? `${percent(r.lower)}～${percent(r.upper)}` : `≈${percent(r.predicted)}`;
   function compactRate(value) {
@@ -90,7 +93,7 @@
       const d = linking.readCard(card);
       if (!d) forget(card);
       const state = d && remember(card, d);
-      const row = [...card.querySelectorAll("p")].find(p => /^实时指数\s*[:：]/.test(p.textContent.trim()));
+      const row = [...card.querySelectorAll("p")].find(isIndexRow);
       let view = row?.querySelector(".funding-radar-projection");
       const source = row && [...row.children].find(el => el.tagName === "SPAN" && !el.classList.contains("funding-radar-projection"));
       const values = source?.textContent.split("|").map(v => v.trim());
@@ -231,6 +234,6 @@
         document.querySelectorAll(".funding-radar-index-source").forEach(el => el.classList.remove("funding-radar-index-source")); }
     };
   }
-  root.FundingRadarProjectionInline = { create, createPolling, compactRate };
+  root.FundingRadarProjectionInline = { create, createPolling, compactRate, isIndexRow };
   if (typeof module !== "undefined") module.exports = root.FundingRadarProjectionInline;
 })(globalThis);

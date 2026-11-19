@@ -9,8 +9,8 @@
       const key = symbol.toUpperCase();
       const previous = known.get(key);
       if (previous && result.checkedAt <= previous.checkedAt) return false;
-      known.set(key, { state: result.state, checkedAt: result.checkedAt });
-      return previous?.state === "restricted" && result.state === "open";
+      known.set(key, { state: result.state, checkedAt: result.checkedAt, market: result.market });
+      return previous?.state === "restricted" && previous.market === result.market && result.state === "open";
     };
     track.reset = symbol => known.delete(symbol.toUpperCase());
     return track;
@@ -31,7 +31,7 @@
       interval: [10, 30, 60, 300].includes(Number(value.interval)) && (value.startMode || value.enabled === true) ? Number(value.interval) : 30,
       coins: parseCoins(value.coins) };
   }
-  function classify(symbol, meta, caps) {
+  function classify(symbol, meta, caps, dex = "") {
     if (typeof symbol !== "string" || !symbol.trim() || symbol.length > 60 || symbol.includes(":")) {
       return { state: "unknown", reason: "币种未识别或不在原生永续查询范围" };
     }
@@ -40,14 +40,24 @@
         !Array.isArray(caps) || !caps.every(x => typeof x === "string" && x)) {
       throw new Error("接口返回格式异常");
     }
-    const coin = symbol.trim().toUpperCase();
+    if (dex && caps.some(x => x.includes(":") && !x.toLowerCase().startsWith(dex + ":"))) throw new Error("HL 限仓名单市场不匹配");
+    const local = symbol.trim().toUpperCase();
+    const coin = dex ? dex.toUpperCase() + ":" + local : local;
     const matches = meta.universe.filter(x => x.name.toUpperCase() === coin);
     if (matches.length !== 1) return { state: "unknown", reason: "未精确匹配到唯一的 HL 永续币种" };
     if (matches[0].isDelisted) return { state: "restricted", reason: "HL 已下架该合约" };
-    if (caps.some(x => x.toUpperCase() === coin)) return { state: "restricted", reason: "HL 已触及公共持仓上限，限制增加持仓" };
+    if (caps.some(x => x.toUpperCase() === coin || (dex && x.toUpperCase() === local))) return { state: "restricted", reason: "HL 已触及公共持仓上限，限制增加持仓" };
     return { state: "open", reason: "HL 未触及公共持仓上限（仅检查该项开仓限制）" };
   }
   function createClient(fetcher = fetch, now = Date.now, timeoutMs = 10000) {
+    const markets = new Map();
+    return (symbol, dex = "") => {
+      if (dex !== "" && !/^[a-z0-9]{1,20}$/.test(dex)) return Promise.resolve({ state: "unknown", reason: "HL 市场未识别", checkedAt: now() });
+      if (!markets.has(dex)) markets.set(dex, createMarketClient(fetcher, now, timeoutMs, dex));
+      return markets.get(dex)(symbol);
+    };
+  }
+  function createMarketClient(fetcher, now, timeoutMs, dex) {
     let cached, flight, retryAfter = 0;
     async function snapshot() {
       if (cached && now() - cached.checkedAt < 10000) return cached;
@@ -61,14 +71,14 @@
           const post = async type => {
             const response = await fetcher("https://api.hyperliquid.xyz/info", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ type }), credentials: "omit", cache: "no-store",
+              body: JSON.stringify(dex ? { type, dex } : { type }), credentials: "omit", cache: "no-store",
               redirect: "error", signal: abort.signal
             });
             if (!response.ok) throw new Error(`HL 接口 HTTP ${response.status}`);
             return response.json();
           };
           const [meta, caps] = await Promise.all([post("meta"), post("perpsAtOpenInterestCap")]);
-          classify("BTC", meta, caps); // Reject malformed snapshots before sharing the cache.
+          classify("BTC", meta, caps, dex); // Reject malformed snapshots before sharing the cache.
           cached = { meta, caps, checkedAt };
           return cached;
         } catch (error) {
@@ -86,7 +96,7 @@
       }
       try {
         const data = await snapshot();
-        return { ...classify(symbol, data.meta, data.caps), checkedAt: data.checkedAt };
+        return { ...classify(symbol, data.meta, data.caps, dex), checkedAt: data.checkedAt };
       } catch (error) {
         return { state: "unknown", reason: error.name === "AbortError" ? "HL 查询超时" : String(error.message || error), checkedAt: now() };
       }

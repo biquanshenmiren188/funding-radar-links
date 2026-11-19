@@ -1,5 +1,17 @@
 importScripts("limits.js", "astro-reader.js", "rough-risk.js", "projection.js");
 const queryLimit = FundingRadarLimits.createClient();
+importScripts("hl-cards.js");
+const hlPairReads = new Map();
+function getHlPairs(tabId, origin) {
+  const key = JSON.stringify([tabId, origin]);
+  if (!hlPairReads.has(key)) {
+    const read = chrome.scripting.executeScript({
+      target: { tabId, frameIds: [0] }, world: "MAIN", func: readHlCardMarkets, args: [origin]
+    }).then(rows => rows[0]?.result).finally(() => hlPairReads.delete(key));
+    hlPairReads.set(key, read);
+  }
+  return hlPairReads.get(key);
+}
 const SCRIPT_ID = "funding-radar-links";
 const riskReads = new Map();
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -59,10 +71,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== "hl-limit-query") return;
   (async () => {
     const { siteOrigin } = await chrome.storage.local.get("siteOrigin");
-    if (!sender.tab || !siteOrigin || new URL(sender.url).origin !== siteOrigin) {
+    if (sender.id !== chrome.runtime.id || !Number.isInteger(sender.tab?.id) || sender.frameId !== 0 ||
+        !siteOrigin || new URL(sender.url).origin !== siteOrigin || typeof message.symbol !== "string" || message.symbol.length > 60) {
       throw new Error("查询来源未授权");
     }
-    return queryLimit(message.symbol);
+    const pairs = await getHlPairs(sender.tab.id, siteOrigin);
+    const market = Array.isArray(pairs) && resolveHlMarket(message.symbol, pairs);
+    if (!market) return { state: "unknown", reason: "未能从看板配置唯一确认 HL 合约与市场", checkedAt: Date.now() };
+    const [dex, coin] = market.includes(":") ? market.split(":") : ["", market];
+    const result = await queryLimit(coin, dex);
+    return { ...result, market, reason: market + " · " + result.reason };
   })().then(sendResponse, () => sendResponse({ state: "unknown", reason: "无法查询，请刷新看板或重新保存插件设置", checkedAt: Date.now() }));
   return true;
 });
